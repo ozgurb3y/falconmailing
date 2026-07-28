@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubscriptionForm } from "./components/subscription-form";
 import { SiteFooter, SiteHeader } from "./site";
 
 const features = [
@@ -26,7 +27,7 @@ const features = [
 
 const steps = [
   ["İzin alınır", "Kullanıcı, işaretlenmemiş bir onay kutusuyla açık tercihini bildirir."],
-  ["Kayıt doğrulanır", "İzin; tarih, kaynak ve metin sürümüyle kaydedilir. Double opt-in akışı planlanır."],
+  ["Kayıt doğrulanır", "İzin; tarih, kaynak ve metin sürümüyle kaydedilir. E-posta adresi double opt-in ile doğrulanır."],
   ["Kampanya hazırlanır", "Yalnızca uygun ve izinli alıcılar hedeflenir; engelli adresler dışarıda bırakılır."],
   ["İleti gönderilir", "Gönderim hacmi kademeli tutulur ve teknik kimlik doğrulama kontrolleri izlenir."],
   ["Tercih uygulanır", "İptal, hard bounce ve complaint kayıtları sonraki gönderimleri durdurur."],
@@ -61,8 +62,8 @@ export default function Home() {
                 altyapıdır.
               </p>
               <div className="hero-actions">
-                <a className="button button-primary" href="#nasil-calisir">
-                  Süreci inceleyin
+                <a className="button button-primary" href="#abone-ol">
+                  İzinli listeye katılın
                 </a>
                 <Link className="text-link" href="/ticari-ileti-ve-izin">
                   İzin politikamız <span aria-hidden="true">↗</span>
@@ -90,7 +91,7 @@ export default function Home() {
                 </div>
                 <div>
                   <dt>Mevcut aşama</dt>
-                  <dd>Kurulum ve doğrulama</dd>
+                  <dd>İzin ve doğrulama altyapısı</dd>
                 </div>
               </dl>
             </aside>
@@ -107,6 +108,33 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="subscription-section" id="abone-ol">
+          <div className="container subscription-grid">
+            <div>
+              <p className="section-label">İzinli abonelik</p>
+              <h2>Önce siz istersiniz, sonra biz doğrularız.</h2>
+              <p className="subscription-intro">
+                Kampanya, ürün duyurusu ve bilgilendirme e-postalarımıza katılmak
+                için formu doldurun. Adresiniz, gönderdiğimiz doğrulama
+                bağlantısını açıp son onayı vermeden aktif listeye eklenmez.
+              </p>
+              <ul className="mini-check-list">
+                <li>Onay kutusu önceden işaretlenmez.</li>
+                <li>İzin tarihi, kaynağı ve metin sürümü kaydedilir.</li>
+                <li>İzninizi istediğiniz zaman geri çekebilirsiniz.</li>
+              </ul>
+            </div>
+            <div className="subscription-card">
+              <h3>E-posta aboneliği</h3>
+              <p>
+                Formdan sonra gelen kutunuza tek kullanımlık bir doğrulama
+                bağlantısı gönderilir.
+              </p>
+              <SubscriptionForm />
+            </div>
+          </div>
+        </section>
+
         <section className="section" id="ozellikler">
           <div className="container">
             <div className="section-heading">
@@ -115,9 +143,8 @@ export default function Home() {
                 <h2>Güven, gönder tuşundan önce kurulur.</h2>
               </div>
               <p>
-                Aşağıdaki kontroller FalconMailing’in planlanan üretim
-                mimarisinin temelidir. Devreye alınan her işlev ayrıca
-                doğrulanacaktır.
+                Aşağıdaki kontroller FalconMailing’in izinli gönderim
+                mimarisinin temelidir ve her kayıt için uygulanır.
               </p>
             </div>
             <div className="feature-grid">

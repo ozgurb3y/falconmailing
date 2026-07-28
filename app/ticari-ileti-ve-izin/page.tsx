@@ -82,10 +82,11 @@ export default function ConsentPolicyPage() {
 
       <h2>8. İYS ve KVKK yaklaşımı</h2>
       <p>
-        Türkiye’deki ticari elektronik ileti ve kişisel veri koruma kuralları
-        süreç tasarımında dikkate alınır. Faaliyetin niteliğine göre İleti
-        Yönetim Sistemi (İYS) yükümlülüğü doğması hâlinde gerekli kayıt ve
-        bildirim süreçleri ayrıca uygulanır. KVKK kapsamındaki talepler için
+        Türkiye’deki alıcılara ait ticari elektronik ileti izinleri, uygulanabilir
+        mevzuat uyarınca İleti Yönetim Sistemi’ne (İYS) kaydedilir. İYS kaydı
+        tamamlanmamış veya İYS durumu ret olan bir adres pazarlama kampanyasına
+        alınmaz. Site üzerinden alınan ret talebi yerel sistemde hemen uygulanır
+        ve İYS güncelleme sürecine aktarılır. KVKK kapsamındaki talepler için
         gizlilik politikamızdaki iletişim kanalı kullanılabilir.
       </p>
 

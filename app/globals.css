@@ -189,6 +189,11 @@ select {
   background: var(--orange-dark);
 }
 
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .button-dark {
   margin-top: 26px;
   background: var(--ink);
@@ -272,6 +277,182 @@ select {
 .statement {
   padding: 70px 0;
   border-block: 1px solid var(--line);
+}
+
+.subscription-section {
+  padding: 96px 0;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 12% 82%, rgba(249, 115, 22, 0.09), transparent 25%),
+    #fffdf9;
+}
+
+.subscription-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: 82px;
+  align-items: start;
+}
+
+.subscription-grid h2 {
+  margin: 0;
+  max-width: 680px;
+  font-size: clamp(2.25rem, 4.6vw, 4.4rem);
+  font-weight: 610;
+  letter-spacing: -0.06em;
+  line-height: 1.04;
+}
+
+.subscription-intro {
+  max-width: 650px;
+  margin: 27px 0 0;
+  color: var(--slate);
+}
+
+.mini-check-list {
+  display: grid;
+  gap: 12px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.mini-check-list li::before {
+  content: "✓";
+  margin-right: 10px;
+  color: var(--success);
+  font-weight: 800;
+}
+
+.subscription-card {
+  padding: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+  box-shadow: 18px 18px 0 rgba(16, 42, 67, 0.06);
+}
+
+.subscription-card > h3 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.035em;
+}
+
+.subscription-card > p {
+  margin: 10px 0 28px;
+  color: var(--slate);
+  font-size: 0.9rem;
+}
+
+.subscription-form {
+  display: grid;
+  gap: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 14px;
+}
+
+.subscription-form label:not(.consent-control):not(.honeypot) {
+  display: grid;
+  gap: 7px;
+}
+
+.subscription-form label > span {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.subscription-form small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.subscription-form input[type="text"],
+.subscription-form input[type="email"] {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #bcccdc;
+  border-radius: 5px;
+  padding: 0 13px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.subscription-form input:focus-visible {
+  outline: 3px solid rgba(249, 115, 22, 0.22);
+  border-color: var(--orange);
+}
+
+.consent-control {
+  display: grid;
+  grid-template-columns: 19px 1fr;
+  gap: 11px;
+  align-items: start;
+  cursor: pointer;
+}
+
+.consent-control input {
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  accent-color: var(--orange);
+}
+
+.consent-control span {
+  font-size: 0.83rem !important;
+  font-weight: 500 !important;
+  line-height: 1.65;
+}
+
+.form-legal {
+  margin: -4px 0 0;
+  color: var(--slate);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.form-legal a {
+  color: var(--orange-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.subscription-form .button {
+  width: 100%;
+}
+
+.form-message {
+  margin: 15px 0 0;
+  border-radius: 5px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+}
+
+.form-message.is-success {
+  border: 1px solid #9ae6b4;
+  background: #f0fff4;
+  color: #276749;
+}
+
+.form-message.is-error {
+  border: 1px solid #feb2b2;
+  background: #fff5f5;
+  color: #9b2c2c;
+}
+
+.honeypot {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
 }
 
 .statement-grid {
@@ -730,6 +911,7 @@ select {
   .hero-grid,
   .section-heading,
   .principle-grid,
+  .subscription-grid,
   .cta-card,
   .footer-top {
     grid-template-columns: 1fr;
@@ -741,6 +923,10 @@ select {
 
   .hero-grid {
     gap: 55px;
+  }
+
+  .subscription-grid {
+    gap: 48px;
   }
 
   .statement-grid {
@@ -802,6 +988,15 @@ select {
   .contact-grid,
   .footer-links {
     grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subscription-card {
+    padding: 28px 22px;
+    box-shadow: 9px 9px 0 rgba(16, 42, 67, 0.06);
   }
 
   .process-list li {

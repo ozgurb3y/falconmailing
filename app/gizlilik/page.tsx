@@ -124,8 +124,8 @@ export default function PrivacyPage() {
       <div className="legal-callout">
         <p>
           Bu metin genel bilgilendirme amacıyla hazırlanmış çalışma taslağıdır;
-          hukuki görüş yerine geçmez. Şirket ve veri sorumlusu bilgileri
-          kesinleştiğinde metin güncellenecektir.
+          hukuki görüş yerine geçmez. Mevzuat ve hizmet kapsamı değiştikçe
+          metin güncellenebilir.
         </p>
       </div>
     </PageShell>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { UnsubscribeForm } from "../components/unsubscribe-form";
 import { PageShell } from "../site";
 
 export const metadata: Metadata = {
@@ -9,17 +10,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function UnsubscribePage() {
+export default async function UnsubscribePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const { token = "" } = await searchParams;
+
   return (
     <PageShell
       eyebrow="İletişim tercihleri"
       title="Tercihiniz sizin kontrolünüzde."
       intro="Pazarlama e-postalarımızı almak istemediğinizde izninizi kolayca geri çekebilirsiniz."
-      note="Gönderim başlamadan önce token tabanlı tek tıklama akışı teknik olarak devreye alınacaktır."
+      note="Kişiye özel bağlantılar e-posta adresinizi açıkça paylaşmadan tercihinizi uygular."
     >
       <h2>Abonelikten nasıl çıkılır?</h2>
       <p>
-        FalconMailing üzerinden gönderilecek her pazarlama e-postasında kişiye
+        FalconMailing üzerinden gönderilen her pazarlama e-postasında kişiye
         özel bir abonelikten çıkma bağlantısı bulunacaktır. Bu bağlantı,
         adresinizi açık şekilde yayımlamadan tercihinizi güvenli bir token ile
         tanıyacak ve tek işlemle iptal edecektir.
@@ -32,32 +39,13 @@ export default function UnsubscribePage() {
         <li>Başarılı işlem mesajını gördüğünüzde tercihiniz kaydedilmiş olur.</li>
       </ol>
 
-      <h2>Gönderimler henüz başlamadı</h2>
-      <p>
-        FalconMailing şu anda üretim öncesi kurulum aşamasındadır ve gerçek
-        kullanıcılara pazarlama gönderimi yapılmamaktadır. Bu nedenle henüz
-        işlenebilecek aktif bir e-posta tokenı bulunmamaktadır. Gönderim sistemi
-        devreye alınmadan önce bu sayfanın güvenli, idempotent ve token tabanlı
-        işlem akışı tamamlanacaktır.
-      </p>
-
       <div className="form-box">
-        <h2>Manuel iptal talebi</h2>
+        <h2>Aboneliği sonlandır</h2>
         <p>
-          Bir abonelik kaydınız olduğunu düşünüyorsanız veya izninizi şimdiden
-          geri çekmek istiyorsanız, kayıtlı e-posta adresinizden bize ulaşın.
+          E-postanızdaki kişiye özel bağlantıyla geldiyseniz aşağıdaki düğme
+          pazarlama izninizi hemen pasifleştirir.
         </p>
-        <a
-          className="button button-primary"
-          href="mailto:support@falconmailing.com?subject=Abonelikten%20Çıkma%20Talebi"
-        >
-          İptal talebi gönder
-        </a>
-        <p className="notice">
-          Talebiniz doğrulandığında adresiniz pazarlama iletişimi için pasif
-          hâle getirilecek ve yeniden gönderimi önleyen suppression kaydı
-          oluşturulacaktır.
-        </p>
+        <UnsubscribeForm token={token} />
       </div>
 
       <h2>Tekrar e-posta alır mıyım?</h2>
@@ -75,6 +63,13 @@ export default function UnsubscribePage() {
           support@falconmailing.com
         </a>{" "}
         adresine iletinin tarihini belirterek yazabilirsiniz.
+      </p>
+      <p>
+        Manuel talep için kayıtlı e-posta adresinizden{" "}
+        <a href="mailto:support@falconmailing.com?subject=Abonelikten%20Çıkma%20Talebi">
+          support@falconmailing.com
+        </a>{" "}
+        adresine yazabilirsiniz.
       </p>
     </PageShell>
   );

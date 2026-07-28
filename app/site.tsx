@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const nav = [
+  ["Abone Ol", "/#abone-ol"],
   ["Özellikler", "/#ozellikler"],
   ["Nasıl Çalışır?", "/#nasil-calisir"],
   ["İzin ve Güvenlik", "/#izin-ve-guvenlik"],
