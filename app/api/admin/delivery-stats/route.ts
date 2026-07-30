@@ -50,18 +50,21 @@ export async function GET() {
       LEFT JOIN latest_campaign ON TRUE
     `;
     const row = rows[0];
+    const requested = Number(row?.requested || 0);
+    const sent = Number(row?.sent || 0);
+    const fullyDelivered = requested > 0 && sent >= requested;
 
     return NextResponse.json(
       {
-        campaignId: row?.id || null,
-        subject: row?.subject || null,
-        status: row?.status || "idle",
-        requested: Number(row?.requested || 0),
-        sent: Number(row?.sent || 0),
-        failed: Number(row?.failed || 0),
-        skipped: Number(row?.skipped || 0),
+        campaignId: fullyDelivered ? null : row?.id || null,
+        subject: fullyDelivered ? null : row?.subject || null,
+        status: fullyDelivered ? "idle" : row?.status || "idle",
+        requested: fullyDelivered ? 0 : requested,
+        sent: fullyDelivered ? 0 : sent,
+        failed: fullyDelivered ? 0 : Number(row?.failed || 0),
+        skipped: fullyDelivered ? 0 : Number(row?.skipped || 0),
         monthlySent: Number(row?.monthly_sent || 0),
-        updatedAt: row?.updated_at || null,
+        updatedAt: fullyDelivered ? null : row?.updated_at || null,
       },
       {
         headers: {
