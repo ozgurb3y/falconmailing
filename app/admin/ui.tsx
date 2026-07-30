@@ -3,28 +3,6 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const HTML_EMAIL_STARTER = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f5f7fa;padding:32px 12px">
-  <tr>
-    <td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background-color:#ffffff;border:1px solid #d9e2ec">
-        <tr>
-          <td style="padding:36px;font-family:Arial,sans-serif;color:#102a43">
-            <p style="margin:0 0 18px;color:#52606d">Merhaba {{name}},</p>
-            <h1 style="margin:0 0 20px;font-size:30px;line-height:1.25">Duyuru başlığınız</h1>
-            <p style="margin:0 0 24px;font-size:16px;line-height:1.7">
-              E-posta içeriğinizi buraya ekleyin. Metinleri, görselleri, tabloları ve butonları
-              doğrudan HTML olarak düzenleyebilirsiniz.
-            </p>
-            <a href="https://www.falconmailing.com" style="display:inline-block;background-color:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:5px">
-              Detayları görüntüle
-            </a>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>`;
-
 export function AdminLoginForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -119,7 +97,7 @@ export function CampaignCreateForm() {
     "internal",
   );
   const [contentMode, setContentMode] = useState<"html" | "template">("html");
-  const [htmlContent, setHtmlContent] = useState(HTML_EMAIL_STARTER);
+  const [htmlContent, setHtmlContent] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
