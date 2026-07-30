@@ -1,0 +1,412 @@
+:root {
+  --admin-ink: #102a43;
+  --admin-slate: #52606d;
+  --admin-line: #d9e2ec;
+  --admin-bg: #f5f7fa;
+  --admin-orange: #f97316;
+  --admin-orange-dark: #c2410c;
+  --admin-green: #1f7a4d;
+  --admin-red: #b42318;
+}
+
+.admin-shell,
+.admin-login-shell {
+  min-height: 100vh;
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+}
+
+.admin-shell {
+  padding: 34px max(24px, calc((100vw - 1240px) / 2)) 90px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  margin-bottom: 34px;
+}
+
+.admin-header p {
+  margin: 6px 0 0;
+  color: var(--admin-slate);
+}
+
+.admin-header h1 {
+  margin: 12px 0 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+}
+
+.admin-brand {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.admin-brand span {
+  color: var(--admin-orange);
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-metrics article {
+  padding: 21px;
+  border: 1px solid var(--admin-line);
+  border-radius: 9px;
+  background: white;
+}
+
+.admin-metrics span,
+.campaign-summary span {
+  display: block;
+  color: var(--admin-slate);
+  font-size: 0.75rem;
+}
+
+.admin-metrics strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.8rem;
+}
+
+.admin-metrics .metric-primary {
+  background: var(--admin-ink);
+  color: white;
+}
+
+.admin-metrics .metric-primary span {
+  color: #bcccdc;
+}
+
+.admin-panel {
+  margin-top: 24px;
+  padding: 32px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: white;
+}
+
+.panel-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  align-items: end;
+  margin-bottom: 30px;
+}
+
+.panel-heading h1,
+.panel-heading h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.panel-heading > p {
+  margin: 0;
+  color: var(--admin-slate);
+  line-height: 1.6;
+}
+
+.admin-kicker {
+  margin: 0 0 8px;
+  color: var(--admin-orange-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-form,
+.campaign-form {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-form label,
+.campaign-form label,
+.confirm-field {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-form label span,
+.campaign-form label span,
+.confirm-field span {
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.admin-form input,
+.campaign-form input,
+.campaign-form textarea,
+.confirm-field input {
+  width: 100%;
+  border: 1px solid #bcccdc;
+  border-radius: 6px;
+  padding: 12px 13px;
+  background: white;
+  color: var(--admin-ink);
+}
+
+.campaign-form textarea {
+  resize: vertical;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.admin-form input:focus,
+.campaign-form input:focus,
+.campaign-form textarea:focus,
+.confirm-field input:focus {
+  outline: 3px solid rgba(249, 115, 22, 0.18);
+  border-color: var(--admin-orange);
+}
+
+.admin-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.admin-primary,
+.admin-danger,
+.admin-ghost {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 18px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.admin-primary {
+  background: var(--admin-orange);
+  color: white;
+}
+
+.admin-danger {
+  background: var(--admin-red);
+  color: white;
+}
+
+.admin-ghost {
+  border: 1px solid var(--admin-line);
+  background: white;
+  color: var(--admin-ink);
+}
+
+.admin-primary:disabled,
+.admin-danger:disabled,
+.admin-ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-notice,
+.send-hint {
+  border-left: 3px solid var(--admin-orange);
+  padding: 13px 15px;
+  background: #fff8f3;
+  color: var(--admin-slate);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.admin-error {
+  margin: 0;
+  color: var(--admin-red);
+  font-size: 0.82rem;
+}
+
+.admin-success {
+  color: var(--admin-green);
+  font-weight: 750;
+}
+
+.admin-login-shell {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.admin-login-card {
+  width: min(100%, 460px);
+  padding: 40px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: white;
+  box-shadow: 18px 18px 0 rgba(16, 42, 67, 0.07);
+}
+
+.admin-login-card h1 {
+  margin: 9px 0 12px;
+  font-size: 2rem;
+}
+
+.admin-login-card > p:not(.admin-kicker) {
+  margin: 0 0 28px;
+  color: var(--admin-slate);
+  line-height: 1.6;
+}
+
+.campaign-table-wrap {
+  overflow-x: auto;
+}
+
+.campaign-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.campaign-table th,
+.campaign-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--admin-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.campaign-table th {
+  color: var(--admin-slate);
+  font-size: 0.72rem;
+}
+
+.campaign-table td:first-child {
+  min-width: 260px;
+  white-space: normal;
+}
+
+.campaign-table td a {
+  color: var(--admin-ink);
+}
+
+.campaign-table td a span {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-slate);
+}
+
+.status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #e9eef5;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.status-sending { background: #fff1e8; color: #9a3412; }
+.status-completed { background: #e7f6ed; color: #17653f; }
+.status-paused { background: #fff7d6; color: #7a5b00; }
+
+.admin-empty {
+  color: var(--admin-slate);
+}
+
+.admin-back {
+  color: var(--admin-orange-dark);
+  font-weight: 750;
+}
+
+.campaign-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.campaign-summary div {
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 7px;
+}
+
+.campaign-summary strong {
+  display: block;
+  margin-top: 7px;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef5;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-orange);
+  transition: width 0.25s ease;
+}
+
+.send-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 16px 0 24px;
+  color: var(--admin-slate);
+  font-size: 0.8rem;
+}
+
+.send-stats strong {
+  color: var(--admin-ink);
+}
+
+.confirm-field {
+  max-width: 600px;
+  margin-bottom: 18px;
+}
+
+.send-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.send-hint {
+  margin: 24px 0 0;
+}
+
+.email-preview h2 {
+  margin: 0 0 20px;
+  max-width: 720px;
+  font-size: 2.2rem;
+}
+
+.preview-content {
+  max-width: 720px;
+  color: var(--admin-slate);
+  line-height: 1.75;
+}
+
+.email-preview > a {
+  display: inline-flex;
+  margin-top: 12px;
+  border-radius: 5px;
+  padding: 13px 18px;
+  background: var(--admin-orange);
+  color: white;
+  font-weight: 750;
+}
+
+@media (max-width: 900px) {
+  .admin-metrics { grid-template-columns: repeat(2, 1fr); }
+  .panel-heading,
+  .admin-field-grid { grid-template-columns: 1fr; }
+  .campaign-summary { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .admin-shell { padding-inline: 14px; }
+  .admin-panel { padding: 22px 18px; }
+  .admin-login-card { padding: 30px 22px; }
+  .admin-header { align-items: flex-start; }
+}
+

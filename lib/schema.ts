@@ -66,6 +66,8 @@ const statements = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS suppressions_contact_idx ON suppressions (contact_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS suppressions_contact_reason_unique
+    ON suppressions (contact_id, reason)`,
   `CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY,
     action TEXT NOT NULL,
@@ -83,6 +85,56 @@ const statements = [
       AND NOT EXISTS (
         SELECT 1 FROM suppressions s WHERE s.contact_id = c.id
       )`,
+  `CREATE TABLE IF NOT EXISTS admin_login_attempts (
+    id UUID PRIMARY KEY,
+    ip_hash CHAR(64) NOT NULL,
+    successful BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS admin_login_attempts_ip_created_idx
+    ON admin_login_attempts (ip_hash, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS campaigns (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    preview_text TEXT,
+    heading TEXT NOT NULL,
+    content TEXT NOT NULL,
+    cta_label TEXT,
+    cta_url TEXT,
+    status TEXT NOT NULL DEFAULT 'draft'
+      CHECK (status IN ('draft', 'sending', 'paused', 'completed', 'cancelled')),
+    audience_count INTEGER NOT NULL DEFAULT 0,
+    sent_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    skipped_count INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT NOT NULL DEFAULT 'admin',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS campaigns_created_idx
+    ON campaigns (created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS campaign_recipients (
+    id UUID PRIMARY KEY,
+    campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+    contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT,
+    status TEXT NOT NULL DEFAULT 'queued'
+      CHECK (status IN ('queued', 'processing', 'sent', 'failed', 'skipped')),
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    claimed_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ,
+    ses_message_id TEXT,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (campaign_id, contact_id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
+    ON campaign_recipients (campaign_id, status)`,
 ] as const;
 
 let schemaPromise: Promise<void> | undefined;
