@@ -226,9 +226,11 @@ export function CampaignCreateForm() {
         <div className="admin-notice">
           Kişiselleştirme için <code>{"{{name}}"}</code> ve{" "}
           <code>{"{{email}}"}</code> kullanabilirsiniz. Butonlar HTML bağlantısı
-          olarak eklenir. Güvenlik için script, form, iframe, olay işleyicileri ve
-          tehlikeli bağlantılar sunucuda kaldırılır. Zorunlu abonelikten çıkma
-          bölümü her e-postaya otomatik eklenir.
+          olarak eklenir. <code>{"<style>"}</code> içindeki CSS kuralları Gmail
+          uyumluluğu için otomatik olarak satır içi stile dönüştürülür. Güvenlik
+          için script, form, iframe, olay işleyicileri ve tehlikeli bağlantılar
+          sunucuda kaldırılır. Zorunlu abonelikten çıkma bölümü her e-postaya
+          otomatik eklenir.
         </div>
       ) : null}
       <div className="admin-notice">
