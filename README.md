@@ -41,6 +41,11 @@ görünümünden alınır. Gönderimden hemen önce uygunluk tekrar kontrol edil
 doğrulanmamış, izni uygun olmayan, abonelikten çıkmış veya engellenmiş kişiler
 gönderime dahil edilmez.
 
+Şirket çalışanlarına yapılan iç iletişimler için pazarlama abonelerinden ayrı
+bir `internal_recipients` listesi bulunur. Yönetici kampanya oluştururken
+“Şirket içi liste” grubunu seçebilir; bu grupta İYS filtresi uygulanmaz.
+Listeden ayrılan veya pasifleştirilen çalışan adresleri yeniden hedeflenmez.
+
 ## Vercel
 
 Vercel proje ayarlarında:

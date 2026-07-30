@@ -170,6 +170,10 @@ CREATE TABLE IF NOT EXISTS campaigns (
 CREATE INDEX IF NOT EXISTS campaigns_created_idx
   ON campaigns (created_at DESC);
 
+ALTER TABLE campaigns
+  ADD COLUMN IF NOT EXISTS audience_type TEXT NOT NULL DEFAULT 'marketing'
+    CHECK (audience_type IN ('marketing', 'internal'));
+
 CREATE TABLE IF NOT EXISTS campaign_recipients (
   id UUID PRIMARY KEY,
   campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -196,6 +200,17 @@ CREATE TABLE IF NOT EXISTS campaign_recipients (
 
 CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
   ON campaign_recipients (campaign_id, status);
+
+ALTER TABLE campaign_recipients
+  ALTER COLUMN contact_id DROP NOT NULL;
+
+ALTER TABLE campaign_recipients
+  ADD COLUMN IF NOT EXISTS internal_recipient_id UUID
+    REFERENCES internal_recipients(id) ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS campaign_recipients_internal_unique
+  ON campaign_recipients (campaign_id, internal_recipient_id)
+  WHERE internal_recipient_id IS NOT NULL;
 
 ALTER TABLE unsubscribe_tokens
   ALTER COLUMN contact_id DROP NOT NULL;
