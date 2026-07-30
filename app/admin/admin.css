@@ -1,12 +1,14 @@
 :root {
-  --admin-ink: #102a43;
-  --admin-slate: #52606d;
-  --admin-line: #d9e2ec;
-  --admin-bg: #f5f7fa;
-  --admin-orange: #f97316;
-  --admin-orange-dark: #c2410c;
-  --admin-green: #1f7a4d;
-  --admin-red: #b42318;
+  --admin-ink: #f4f4f5;
+  --admin-slate: #a1a1aa;
+  --admin-line: #303036;
+  --admin-bg: #08080a;
+  --admin-panel: #151518;
+  --admin-input: #0e0e11;
+  --admin-orange: #e4e4e7;
+  --admin-orange-dark: #f4f4f5;
+  --admin-green: #d4d4d8;
+  --admin-red: #e4e4e7;
 }
 
 .admin-shell,
@@ -14,6 +16,7 @@
   min-height: 100vh;
   background: var(--admin-bg);
   color: var(--admin-ink);
+  color-scheme: dark;
 }
 
 .admin-shell {
@@ -44,7 +47,7 @@
 }
 
 .admin-brand span {
-  color: var(--admin-orange);
+  color: #a1a1aa;
 }
 
 .admin-metrics {
@@ -58,7 +61,7 @@
   padding: 21px;
   border: 1px solid var(--admin-line);
   border-radius: 9px;
-  background: white;
+  background: var(--admin-panel);
 }
 
 .admin-metrics span,
@@ -75,17 +78,17 @@
 }
 
 .admin-metrics .metric-primary {
-  background: var(--admin-ink);
-  color: white;
+  background: #25252a;
+  color: var(--admin-ink);
 }
 
 .admin-metrics .metric-primary span {
-  color: #bcccdc;
+  color: var(--admin-slate);
 }
 
 .admin-metrics .metric-internal {
-  border-color: #9fb3c8;
-  background: #edf5fb;
+  border-color: #52525b;
+  background: #202024;
 }
 
 .admin-panel {
@@ -93,7 +96,7 @@
   padding: 32px;
   border: 1px solid var(--admin-line);
   border-radius: 10px;
-  background: white;
+  background: var(--admin-panel);
 }
 
 .panel-heading {
@@ -151,10 +154,10 @@
 .campaign-form textarea,
 .confirm-field input {
   width: 100%;
-  border: 1px solid #bcccdc;
+  border: 1px solid var(--admin-line);
   border-radius: 6px;
   padding: 12px 13px;
-  background: white;
+  background: var(--admin-input);
   color: var(--admin-ink);
 }
 
@@ -168,6 +171,12 @@
   min-height: 44px;
 }
 
+.admin-form input::placeholder,
+.campaign-form input::placeholder,
+.campaign-form textarea::placeholder {
+  color: #71717a;
+}
+
 .html-editor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
@@ -178,8 +187,8 @@
 .campaign-form .html-code-editor {
   min-height: 620px;
   resize: vertical;
-  background: #101923;
-  color: #e6edf3;
+  background: #050506;
+  color: #f4f4f5;
   font-family: Consolas, "Courier New", monospace;
   font-size: 0.82rem;
   line-height: 1.55;
@@ -201,7 +210,7 @@
 .html-preview-frame {
   width: 100%;
   min-height: 620px;
-  border: 1px solid #bcccdc;
+  border: 1px solid var(--admin-line);
   border-radius: 6px;
   background: white;
 }
@@ -213,7 +222,7 @@
 .admin-notice code {
   border-radius: 3px;
   padding: 2px 5px;
-  background: #fff;
+  background: #08080a;
   color: var(--admin-ink);
   font-family: Consolas, "Courier New", monospace;
 }
@@ -223,7 +232,7 @@
 .campaign-form select:focus,
 .campaign-form textarea:focus,
 .confirm-field input:focus {
-  outline: 3px solid rgba(249, 115, 22, 0.18);
+  outline: 3px solid rgba(228, 228, 231, 0.16);
   border-color: var(--admin-orange);
 }
 
@@ -246,6 +255,20 @@
   accent-color: var(--admin-orange);
 }
 
+.instant-recipient-box {
+  display: grid;
+  gap: 15px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  padding: 20px;
+  background: #101013;
+}
+
+.instant-recipient-box small {
+  color: var(--admin-slate);
+  line-height: 1.5;
+}
+
 .admin-primary,
 .admin-danger,
 .admin-ghost {
@@ -259,17 +282,17 @@
 
 .admin-primary {
   background: var(--admin-orange);
-  color: white;
+  color: #09090b;
 }
 
 .admin-danger {
-  background: var(--admin-red);
-  color: white;
+  background: #52525b;
+  color: #fff;
 }
 
 .admin-ghost {
   border: 1px solid var(--admin-line);
-  background: white;
+  background: var(--admin-panel);
   color: var(--admin-ink);
 }
 
@@ -284,7 +307,7 @@
 .send-hint {
   border-left: 3px solid var(--admin-orange);
   padding: 13px 15px;
-  background: #fff8f3;
+  background: #1b1b1f;
   color: var(--admin-slate);
   font-size: 0.8rem;
   line-height: 1.6;
@@ -312,8 +335,8 @@
   padding: 40px;
   border: 1px solid var(--admin-line);
   border-radius: 10px;
-  background: white;
-  box-shadow: 18px 18px 0 rgba(16, 42, 67, 0.07);
+  background: var(--admin-panel);
+  box-shadow: 18px 18px 0 rgba(255, 255, 255, 0.04);
 }
 
 .admin-login-card h1 {
@@ -369,14 +392,14 @@
   display: inline-flex;
   border-radius: 999px;
   padding: 5px 9px;
-  background: #e9eef5;
+  background: #29292e;
   font-size: 0.7rem;
   font-weight: 750;
 }
 
-.status-sending { background: #fff1e8; color: #9a3412; }
-.status-completed { background: #e7f6ed; color: #17653f; }
-.status-paused { background: #fff7d6; color: #7a5b00; }
+.status-sending { background: #3f3f46; color: #f4f4f5; }
+.status-completed { background: #27272a; color: #d4d4d8; }
+.status-paused { background: #52525b; color: #fff; }
 
 .admin-empty {
   color: var(--admin-slate);
@@ -409,7 +432,7 @@
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e9eef5;
+  background: #29292e;
 }
 
 .progress-track span {
@@ -466,7 +489,7 @@
   border-radius: 5px;
   padding: 13px 18px;
   background: var(--admin-orange);
-  color: white;
+  color: #09090b;
   font-weight: 750;
 }
 

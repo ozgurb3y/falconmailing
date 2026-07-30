@@ -33,7 +33,7 @@ export default async function CampaignDetailPage({
     <main className="admin-shell admin-detail">
       <header className="admin-header">
         <div>
-          <Link className="admin-back" href="/admin">← Kampanyalar</Link>
+          <Link className="admin-back" href="/admin">← Yeni kampanya</Link>
           <h1>{String(campaign.name)}</h1>
           <p>{String(campaign.subject)}</p>
         </div>
@@ -43,7 +43,7 @@ export default async function CampaignDetailPage({
         <div className="campaign-summary">
           <div><span>Durum</span><strong>{String(campaign.status)}</strong></div>
           <div><span>Alıcı görüntüsü</span><strong>{Number(campaign.audience_count)}</strong></div>
-          <div><span>Alıcı grubu</span><strong>{campaign.audience_type === "internal" ? "Şirket içi liste" : "İzinli aboneler"}</strong></div>
+          <div><span>Alıcı grubu</span><strong>{campaign.audience_type === "internal" ? "Gönderime özel adresler" : "İzinli aboneler"}</strong></div>
           <div><span>Oluşturuldu</span><strong>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(String(campaign.created_at)))}</strong></div>
         </div>
         <CampaignSender

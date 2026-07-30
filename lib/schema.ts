@@ -146,6 +146,15 @@ const statements = [
       CHECK (content_mode IN ('template', 'html'))`,
   `ALTER TABLE campaigns
     ADD COLUMN IF NOT EXISTS html_content TEXT`,
+  `CREATE TABLE IF NOT EXISTS email_suppressions (
+    id UUID PRIMARY KEY,
+    email TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT 'unsubscribe',
+    source TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS email_suppressions_email_lower_unique
+    ON email_suppressions ((lower(email)))`,
   `CREATE TABLE IF NOT EXISTS campaign_recipients (
     id UUID PRIMARY KEY,
     campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -164,16 +173,20 @@ const statements = [
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (campaign_id, contact_id),
     UNIQUE (campaign_id, internal_recipient_id),
-    CHECK (
-      (contact_id IS NOT NULL AND internal_recipient_id IS NULL)
-      OR (contact_id IS NULL AND internal_recipient_id IS NOT NULL)
-    )
+    CHECK (NOT (contact_id IS NOT NULL AND internal_recipient_id IS NOT NULL))
   )`,
   `ALTER TABLE campaign_recipients
     ALTER COLUMN contact_id DROP NOT NULL`,
   `ALTER TABLE campaign_recipients
     ADD COLUMN IF NOT EXISTS internal_recipient_id UUID
       REFERENCES internal_recipients(id) ON DELETE CASCADE`,
+  `ALTER TABLE campaign_recipients
+    DROP CONSTRAINT IF EXISTS campaign_recipients_check`,
+  `ALTER TABLE campaign_recipients
+    DROP CONSTRAINT IF EXISTS campaign_recipients_target_check`,
+  `ALTER TABLE campaign_recipients
+    ADD CONSTRAINT campaign_recipients_target_check
+      CHECK (NOT (contact_id IS NOT NULL AND internal_recipient_id IS NOT NULL))`,
   `CREATE UNIQUE INDEX IF NOT EXISTS campaign_recipients_internal_unique
     ON campaign_recipients (campaign_id, internal_recipient_id)
     WHERE internal_recipient_id IS NOT NULL`,
@@ -184,6 +197,8 @@ const statements = [
   `ALTER TABLE unsubscribe_tokens
     ADD COLUMN IF NOT EXISTS internal_recipient_id UUID
       REFERENCES internal_recipients(id) ON DELETE CASCADE`,
+  `ALTER TABLE unsubscribe_tokens
+    ADD COLUMN IF NOT EXISTS recipient_email TEXT`,
   `CREATE INDEX IF NOT EXISTS unsubscribe_tokens_internal_idx
     ON unsubscribe_tokens (internal_recipient_id)`,
 ] as const;

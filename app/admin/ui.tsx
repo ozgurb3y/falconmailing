@@ -84,10 +84,40 @@ export function AdminLogoutButton() {
   );
 }
 
+function parseInternalRecipients(value: string) {
+  const recipients = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const angled = line.match(/^(.+?)\s*<([^>]+)>$/);
+      if (angled) {
+        return { name: angled[1].trim(), email: angled[2].trim() };
+      }
+      const [email, ...nameParts] = line.split(",");
+      return {
+        email: email.trim(),
+        name: nameParts.join(",").trim() || null,
+      };
+    });
+
+  return Array.from(
+    new Map(
+      recipients.map((recipient) => [
+        recipient.email.toLowerCase(),
+        recipient,
+      ]),
+    ).values(),
+  );
+}
+
 export function CampaignCreateForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [audienceType, setAudienceType] = useState<"internal" | "marketing">(
+    "internal",
+  );
   const [contentMode, setContentMode] = useState<"html" | "template">("html");
   const [htmlContent, setHtmlContent] = useState(HTML_EMAIL_STARTER);
 
@@ -97,6 +127,10 @@ export function CampaignCreateForm() {
     setMessage("");
     const form = event.currentTarget;
     const data = new FormData(form);
+    const internalRecipients =
+      audienceType === "internal"
+        ? parseInternalRecipients(String(data.get("internalRecipients") || ""))
+        : [];
     const response = await fetch("/api/admin/campaigns", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -108,7 +142,10 @@ export function CampaignCreateForm() {
         content: data.get("content"),
         contentMode,
         htmlContent: contentMode === "html" ? htmlContent : null,
-        audienceType: data.get("audienceType"),
+        audienceType,
+        internalRecipients,
+        internalAuthorized:
+          audienceType !== "internal" || data.get("internalAuthorized") === "on",
         ctaLabel: data.get("ctaLabel"),
         ctaUrl: data.get("ctaUrl"),
       }),
@@ -130,11 +167,44 @@ export function CampaignCreateForm() {
     <form className="campaign-form" onSubmit={submit}>
       <label>
         <span>Alıcı grubu</span>
-        <select name="audienceType" required defaultValue="internal">
-          <option value="internal">Şirket içi liste</option>
+        <select
+          name="audienceType"
+          required
+          value={audienceType}
+          onChange={(event) =>
+            setAudienceType(event.target.value as "internal" | "marketing")
+          }
+        >
+          <option value="internal">Bu gönderime özel adresler</option>
           <option value="marketing">İzinli pazarlama aboneleri</option>
         </select>
       </label>
+      {audienceType === "internal" ? (
+        <div className="instant-recipient-box">
+          <label>
+            <span>Gönderilecek e-posta adresleri — her satıra bir kişi</span>
+            <textarea
+              name="internalRecipients"
+              required
+              rows={9}
+              placeholder={
+                "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
+              }
+            />
+            <small>
+              Adres sayısı sınırı yoktur. Tekrarlanan adresler ayıklanır ve bu
+              alan kalıcı bir şirket içi liste oluşturmaz.
+            </small>
+          </label>
+          <label className="internal-authorization">
+            <input name="internalAuthorized" required type="checkbox" />
+            <span>
+              Bu adreslere şirket içi iletişim göndermeye yetkili olduğumu
+              beyan ediyorum.
+            </span>
+          </label>
+        </div>
+      ) : null}
       <div className="admin-field-grid">
         <label>
           <span>Kampanya adı</span>
@@ -234,135 +304,14 @@ export function CampaignCreateForm() {
         </div>
       ) : null}
       <div className="admin-notice">
-        Kampanya oluşturulduğunda yalnızca o anda gönderime uygun olan kişilerin
-        güvenli bir alıcı görüntüsü alınır. Gönderim sırasında uygunluk tekrar
-        kontrol edilir.
+        {audienceType === "internal"
+          ? "Yalnızca yukarıdaki alana bu gönderim için girdiğiniz adresler kuyruğa alınır. Kalıcı şirket içi kişi listesi oluşturulmaz."
+          : "Kampanya oluşturulduğunda yalnızca o anda gönderime uygun izinli abonelerin güvenli bir alıcı görüntüsü alınır. Gönderim sırasında uygunluk tekrar kontrol edilir."}
       </div>
       <button className="admin-primary" disabled={loading} type="submit">
-        {loading ? "Oluşturuluyor…" : "Taslağı ve alıcı listesini oluştur"}
+        {loading ? "Oluşturuluyor…" : "Taslağı ve gönderim kuyruğunu oluştur"}
       </button>
       {message ? <p className="admin-error">{message}</p> : null}
-    </form>
-  );
-}
-
-function parseInternalRecipients(value: string) {
-  const recipients = value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const angled = line.match(/^(.+?)\s*<([^>]+)>$/);
-      if (angled) {
-        return { name: angled[1].trim(), email: angled[2].trim() };
-      }
-      const [email, ...nameParts] = line.split(",");
-      return {
-        email: email.trim(),
-        name: nameParts.join(",").trim() || null,
-      };
-    });
-
-  return Array.from(
-    new Map(
-      recipients.map((recipient) => [
-        recipient.email.toLowerCase(),
-        recipient,
-      ]),
-    ).values(),
-  );
-}
-
-export function InternalRecipientImportForm() {
-  const router = useRouter();
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setMessage("");
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const recipients = parseInternalRecipients(
-      String(data.get("recipients") || ""),
-    );
-    const authorized = data.get("authorized") === "on";
-    const chunkSize = 500;
-    let processed = 0;
-    let active = 0;
-
-    for (let index = 0; index < recipients.length; index += chunkSize) {
-      setMessage(
-        `${Math.min(index + chunkSize, recipients.length)} / ${recipients.length} adres işleniyor…`,
-      );
-      const response = await fetch("/api/admin/internal-recipients", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          recipients: recipients.slice(index, index + chunkSize),
-          authorized,
-        }),
-      });
-      const result = (await response.json()) as {
-        processed?: number;
-        active?: number;
-        message?: string;
-      };
-      if (!response.ok) {
-        setMessage(
-          `Eklenen adres: ${processed}. Kalan bölüm eklenemedi. ${result.message || ""}`.trim(),
-        );
-        setLoading(false);
-        return;
-      }
-      processed += result.processed || 0;
-      active = result.active || active;
-    }
-    form.reset();
-    setMessage(
-      `${processed} adres işlendi. Aktif şirket içi liste: ${active}.`,
-    );
-    setLoading(false);
-    router.refresh();
-  }
-
-  return (
-    <form className="campaign-form" onSubmit={submit}>
-      <label>
-        <span>Çalışan adresleri — her satıra bir kişi</span>
-        <textarea
-          name="recipients"
-          required
-          rows={7}
-          placeholder={
-            "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
-          }
-        />
-        <small>
-          Adres sayısı sınırı yoktur. Büyük listeler otomatik olarak parçalara
-          ayrılarak yüklenir.
-        </small>
-      </label>
-      <label className="internal-authorization">
-        <input name="authorized" required type="checkbox" />
-        <span>
-          Bu adresleri şirket içi iletişim kapsamında kullanmaya yetkili
-          olduğumu ve listeyi güncel tutacağımı beyan ediyorum.
-        </span>
-      </label>
-      <button className="admin-primary" disabled={loading} type="submit">
-        {loading ? "Ekleniyor…" : "Şirket içi listeye ekle"}
-      </button>
-      {message ? (
-        <p
-          className={
-            message.includes("işlendi") ? "admin-success" : "admin-error"
-          }
-        >
-          {message}
-        </p>
-      ) : null}
     </form>
   );
 }

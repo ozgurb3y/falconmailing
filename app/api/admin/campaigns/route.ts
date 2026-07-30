@@ -14,6 +14,11 @@ import {
 
 export const runtime = "nodejs";
 
+const recipientSchema = z.object({
+  email: z.string().trim().email().max(254),
+  name: z.string().trim().max(100).optional().nullable(),
+});
+
 const campaignSchema = z
   .object({
     name: z.string().trim().min(3).max(120),
@@ -24,6 +29,8 @@ const campaignSchema = z
     content: z.string().trim().max(20_000).optional().nullable(),
     htmlContent: z.string().trim().max(500_000).optional().nullable(),
     audienceType: z.enum(["marketing", "internal"]),
+    internalRecipients: z.array(recipientSchema).optional().default([]),
+    internalAuthorized: z.boolean().optional().default(false),
     ctaLabel: z.string().trim().max(80).optional().nullable(),
     ctaUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal("")),
   })
@@ -64,6 +71,23 @@ const campaignSchema = z
         message: "HTML içeriği en az 10 karakter olmalıdır.",
       });
     }
+    if (
+      value.audienceType === "internal" &&
+      value.internalRecipients.length === 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["internalRecipients"],
+        message: "En az bir geçerli e-posta adresi girilmelidir.",
+      });
+    }
+    if (value.audienceType === "internal" && !value.internalAuthorized) {
+      context.addIssue({
+        code: "custom",
+        path: ["internalAuthorized"],
+        message: "Gönderim yetkisi beyanı gereklidir.",
+      });
+    }
   });
 
 export async function POST(request: Request) {
@@ -101,6 +125,17 @@ export async function POST(request: Request) {
       value.contentMode === "html"
         ? campaignHtmlToText(sanitizedHtml || "") || value.subject
         : value.content || value.subject;
+    const internalRecipients = Array.from(
+      new Map(
+        value.internalRecipients.map((recipient) => [
+          recipient.email.toLowerCase(),
+          {
+            email: recipient.email.toLowerCase(),
+            name: recipient.name || null,
+          },
+        ]),
+      ).values(),
+    );
     await sql`
       INSERT INTO campaigns (
         id, name, subject, preview_text, heading, content,
@@ -119,21 +154,26 @@ export async function POST(request: Request) {
     const rows = await sql`
       WITH source_recipients AS (
         SELECT
-          id,
+          id AS contact_id,
+          NULL::uuid AS internal_recipient_id,
           email,
-          name,
-          'marketing'::text AS source
+          name
         FROM marketing_eligible_contacts
         WHERE ${value.audienceType} = 'marketing'
         UNION ALL
         SELECT
-          id,
-          email,
-          name,
-          'internal'::text AS source
-        FROM internal_recipients
+          NULL::uuid AS contact_id,
+          NULL::uuid AS internal_recipient_id,
+          lower(trim(input.email)) AS email,
+          nullif(trim(input.name), '') AS name
+        FROM jsonb_to_recordset(${JSON.stringify(internalRecipients)}::jsonb)
+          AS input(email TEXT, name TEXT)
         WHERE ${value.audienceType} = 'internal'
-          AND status = 'active'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM email_suppressions blocked
+            WHERE lower(blocked.email) = lower(trim(input.email))
+          )
       ),
       recipients AS (
         INSERT INTO campaign_recipients (
@@ -143,8 +183,8 @@ export async function POST(request: Request) {
         SELECT
           gen_random_uuid(),
           ${campaignId},
-          CASE WHEN source = 'marketing' THEN id ELSE NULL END,
-          CASE WHEN source = 'internal' THEN id ELSE NULL END,
+          contact_id,
+          internal_recipient_id,
           email,
           name,
           'queued',

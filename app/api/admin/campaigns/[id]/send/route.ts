@@ -174,13 +174,22 @@ export async function POST(
             WHERE id = ${recipient.contact_id}
             LIMIT 1
           `
-        : await sql`
+        : recipient.internal_recipient_id
+          ? await sql`
             SELECT id
             FROM internal_recipients
             WHERE id = ${recipient.internal_recipient_id}
               AND status = 'active'
             LIMIT 1
-          `;
+          `
+          : await sql`
+              SELECT 1
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM email_suppressions
+                WHERE lower(email) = lower(${recipient.email})
+              )
+            `;
       if (eligible.length === 0) {
         await sql`
           UPDATE campaign_recipients
@@ -197,12 +206,17 @@ export async function POST(
         await sql`
           INSERT INTO unsubscribe_tokens (
             token_hash, contact_id, internal_recipient_id,
-            campaign_id, created_at
+            recipient_email, campaign_id, created_at
           )
           VALUES (
             ${hashToken(unsubscribeToken)},
             ${recipient.contact_id || null},
             ${recipient.internal_recipient_id || null},
+            ${
+              recipient.contact_id || recipient.internal_recipient_id
+                ? null
+                : recipient.email
+            },
             ${id},
             NOW()
           )
