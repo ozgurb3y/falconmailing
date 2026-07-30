@@ -17,6 +17,7 @@ const campaignSchema = z
     previewText: z.string().trim().max(220).optional().nullable(),
     heading: z.string().trim().min(3).max(180),
     content: z.string().trim().min(10).max(20_000),
+    audienceType: z.enum(["marketing", "internal"]),
     ctaLabel: z.string().trim().max(80).optional().nullable(),
     ctaUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal("")),
   })
@@ -44,27 +45,54 @@ export async function POST(request: Request) {
     const sql = db();
     const campaignId = randomUUID();
     const value = parsed.data;
+    await sql`
+      INSERT INTO campaigns (
+        id, name, subject, preview_text, heading, content,
+        cta_label, cta_url, audience_type, status,
+        created_by, created_at, updated_at
+      )
+      VALUES (
+        ${campaignId}, ${value.name}, ${value.subject},
+        ${value.previewText || null}, ${value.heading}, ${value.content},
+        ${value.ctaLabel || null}, ${value.ctaUrl || null},
+        ${value.audienceType}, 'draft', 'admin', NOW(), NOW()
+      )
+    `;
     const rows = await sql`
-      WITH inserted_campaign AS (
-        INSERT INTO campaigns (
-          id, name, subject, preview_text, heading, content,
-          cta_label, cta_url, status, created_by, created_at, updated_at
-        )
-        VALUES (
-          ${campaignId}, ${value.name}, ${value.subject},
-          ${value.previewText || null}, ${value.heading}, ${value.content},
-          ${value.ctaLabel || null}, ${value.ctaUrl || null},
-          'draft', 'admin', NOW(), NOW()
-        )
-        RETURNING id
+      WITH source_recipients AS (
+        SELECT
+          id,
+          email,
+          name,
+          'marketing'::text AS source
+        FROM marketing_eligible_contacts
+        WHERE ${value.audienceType} = 'marketing'
+        UNION ALL
+        SELECT
+          id,
+          email,
+          name,
+          'internal'::text AS source
+        FROM internal_recipients
+        WHERE ${value.audienceType} = 'internal'
+          AND status = 'active'
       ),
       recipients AS (
         INSERT INTO campaign_recipients (
-          id, campaign_id, contact_id, email, name, status, created_at, updated_at
+          id, campaign_id, contact_id, internal_recipient_id,
+          email, name, status, created_at, updated_at
         )
         SELECT
-          gen_random_uuid(), ${campaignId}, id, email, name, 'queued', NOW(), NOW()
-        FROM marketing_eligible_contacts
+          gen_random_uuid(),
+          ${campaignId},
+          CASE WHEN source = 'marketing' THEN id ELSE NULL END,
+          CASE WHEN source = 'internal' THEN id ELSE NULL END,
+          email,
+          name,
+          'queued',
+          NOW(),
+          NOW()
+        FROM source_recipients
         RETURNING id
       )
       UPDATE campaigns
@@ -88,4 +116,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

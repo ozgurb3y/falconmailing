@@ -43,6 +43,7 @@ export default async function CampaignDetailPage({
         <div className="campaign-summary">
           <div><span>Durum</span><strong>{String(campaign.status)}</strong></div>
           <div><span>Alıcı görüntüsü</span><strong>{Number(campaign.audience_count)}</strong></div>
+          <div><span>Alıcı grubu</span><strong>{campaign.audience_type === "internal" ? "Şirket içi liste" : "İzinli aboneler"}</strong></div>
           <div><span>Oluşturuldu</span><strong>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(String(campaign.created_at)))}</strong></div>
         </div>
         <CampaignSender
@@ -75,4 +76,3 @@ export default async function CampaignDetailPage({
     </main>
   );
 }
-

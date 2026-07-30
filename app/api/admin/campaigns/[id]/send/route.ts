@@ -19,7 +19,8 @@ const actionSchema = z.object({
 
 type Recipient = {
   id: string;
-  contact_id: string;
+  contact_id: string | null;
+  internal_recipient_id: string | null;
   email: string;
   name: string | null;
 };
@@ -32,6 +33,7 @@ type Campaign = {
   content: string;
   cta_label: string | null;
   cta_url: string | null;
+  audience_type: "marketing" | "internal";
   status: string;
 };
 
@@ -158,16 +160,25 @@ export async function POST(
         updated_at = NOW()
       FROM selected
       WHERE r.id = selected.id
-      RETURNING r.id, r.contact_id, r.email, r.name
+      RETURNING
+        r.id, r.contact_id, r.internal_recipient_id, r.email, r.name
     `;
 
     for (const recipient of claimedRows as Recipient[]) {
-      const eligible = await sql`
-        SELECT id
-        FROM marketing_eligible_contacts
-        WHERE id = ${recipient.contact_id}
-        LIMIT 1
-      `;
+      const eligible = recipient.contact_id
+        ? await sql`
+            SELECT id
+            FROM marketing_eligible_contacts
+            WHERE id = ${recipient.contact_id}
+            LIMIT 1
+          `
+        : await sql`
+            SELECT id
+            FROM internal_recipients
+            WHERE id = ${recipient.internal_recipient_id}
+              AND status = 'active'
+            LIMIT 1
+          `;
       if (eligible.length === 0) {
         await sql`
           UPDATE campaign_recipients
@@ -183,11 +194,13 @@ export async function POST(
       try {
         await sql`
           INSERT INTO unsubscribe_tokens (
-            token_hash, contact_id, campaign_id, created_at
+            token_hash, contact_id, internal_recipient_id,
+            campaign_id, created_at
           )
           VALUES (
             ${hashToken(unsubscribeToken)},
-            ${recipient.contact_id},
+            ${recipient.contact_id || null},
+            ${recipient.internal_recipient_id || null},
             ${id},
             NOW()
           )
@@ -202,6 +215,7 @@ export async function POST(
           ctaLabel: campaign.cta_label,
           ctaUrl: campaign.cta_url,
           unsubscribeToken,
+          audienceType: campaign.audience_type,
         });
         await sql`
           UPDATE campaign_recipients

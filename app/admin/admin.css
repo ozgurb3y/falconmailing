@@ -83,6 +83,11 @@
   color: #bcccdc;
 }
 
+.admin-metrics .metric-internal {
+  border-color: #9fb3c8;
+  background: #edf5fb;
+}
+
 .admin-panel {
   margin-top: 24px;
   padding: 32px;
@@ -142,6 +147,7 @@
 
 .admin-form input,
 .campaign-form input,
+.campaign-form select,
 .campaign-form textarea,
 .confirm-field input {
   width: 100%;
@@ -158,8 +164,13 @@
   line-height: 1.6;
 }
 
+.campaign-form select {
+  min-height: 44px;
+}
+
 .admin-form input:focus,
 .campaign-form input:focus,
+.campaign-form select:focus,
 .campaign-form textarea:focus,
 .confirm-field input:focus {
   outline: 3px solid rgba(249, 115, 22, 0.18);
@@ -170,6 +181,19 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.internal-authorization {
+  grid-template-columns: 20px 1fr !important;
+  align-items: start;
+  cursor: pointer;
+}
+
+.internal-authorization input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--admin-orange);
 }
 
 .admin-primary,
@@ -315,7 +339,7 @@
 
 .campaign-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 15px;
   margin-bottom: 30px;
 }
@@ -409,4 +433,3 @@
   .admin-login-card { padding: 30px 22px; }
   .admin-header { align-items: flex-start; }
 }
-

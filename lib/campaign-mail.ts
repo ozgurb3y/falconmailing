@@ -52,6 +52,7 @@ export async function sendCampaignEmail({
   ctaLabel,
   ctaUrl,
   unsubscribeToken,
+  audienceType,
 }: {
   to: string;
   recipientName?: string | null;
@@ -62,6 +63,7 @@ export async function sendCampaignEmail({
   ctaLabel?: string | null;
   ctaUrl?: string | null;
   unsubscribeToken: string;
+  audienceType: "marketing" | "internal";
 }) {
   const appUrl = process.env.APP_URL || "https://falconmailing.com";
   const unsubscribeUrl = `${appUrl}/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
@@ -75,6 +77,10 @@ export async function sendCampaignEmail({
     ctaLabel && ctaUrl
       ? `<p style="margin:28px 0"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#f97316;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:5px">${escapeHtml(ctaLabel)}</a></p>`
       : "";
+  const footerReason =
+    audienceType === "internal"
+      ? "Bu e-posta şirket içi iletişim listeniz kapsamında gönderildi."
+      : "Bu e-postayı FalconMailing iletişimlerine izin verdiğiniz için aldınız.";
 
   const result = await transporter().sendMail({
     from: `"${fromName}" <${fromAddress}>`,
@@ -96,7 +102,7 @@ export async function sendCampaignEmail({
             ${cta}
             <hr style="margin:34px 0;border:0;border-top:1px solid #d9e2ec">
             <p style="margin:0;color:#7b8794;font-size:12px;line-height:1.65">
-              Bu e-postayı FalconMailing iletişimlerine izin verdiğiniz için aldınız.
+              ${footerReason}
               <a href="${unsubscribeUrl}" style="color:#c2410c">Abonelikten çıkın</a>.
             </p>
           </td></tr>
@@ -113,4 +119,3 @@ export async function sendCampaignEmail({
 
   return result.messageId;
 }
-

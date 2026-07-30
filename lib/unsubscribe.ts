@@ -12,7 +12,7 @@ export async function unsubscribeByToken(rawToken: string) {
   const tokenHash = hashToken(rawToken);
   const rows = await sql`
     WITH target AS (
-      SELECT contact_id
+      SELECT contact_id, internal_recipient_id
       FROM unsubscribe_tokens
       WHERE token_hash = ${tokenHash}
         AND (expires_at IS NULL OR expires_at > NOW())
@@ -40,6 +40,15 @@ export async function unsubscribeByToken(rawToken: string) {
         AND status IN ('pending', 'granted')
       RETURNING id
     ),
+    updated_internal_recipient AS (
+      UPDATE internal_recipients
+      SET
+        status = 'unsubscribed',
+        unsubscribed_at = COALESCE(unsubscribed_at, NOW()),
+        updated_at = NOW()
+      WHERE id = (SELECT internal_recipient_id FROM target)
+      RETURNING id
+    ),
     inserted_suppression AS (
       INSERT INTO suppressions (
         id,
@@ -55,7 +64,8 @@ export async function unsubscribeByToken(rawToken: string) {
         'recipient_link',
         NOW()
       FROM target
-      WHERE NOT EXISTS (
+      WHERE contact_id IS NOT NULL
+        AND NOT EXISTS (
         SELECT 1
         FROM suppressions s
         WHERE s.contact_id = target.contact_id
@@ -66,7 +76,7 @@ export async function unsubscribeByToken(rawToken: string) {
     UPDATE unsubscribe_tokens
     SET used_at = COALESCE(used_at, NOW())
     WHERE token_hash = ${tokenHash}
-    RETURNING contact_id
+    RETURNING contact_id, internal_recipient_id
   `;
 
   return rows.length > 0;

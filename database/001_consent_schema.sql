@@ -123,6 +123,26 @@ CREATE TABLE IF NOT EXISTS admin_login_attempts (
 CREATE INDEX IF NOT EXISTS admin_login_attempts_ip_created_idx
   ON admin_login_attempts (ip_hash, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS internal_recipients (
+  id UUID PRIMARY KEY,
+  email TEXT NOT NULL,
+  name TEXT,
+  status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'inactive', 'unsubscribed', 'suppressed')),
+  source TEXT NOT NULL DEFAULT 'admin_internal_list',
+  added_by TEXT NOT NULL DEFAULT 'admin',
+  authorization_note TEXT NOT NULL,
+  unsubscribed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS internal_recipients_email_lower_unique
+  ON internal_recipients ((lower(email)));
+
+CREATE INDEX IF NOT EXISTS internal_recipients_status_idx
+  ON internal_recipients (status);
+
 CREATE TABLE IF NOT EXISTS campaigns (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
@@ -132,6 +152,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
   content TEXT NOT NULL,
   cta_label TEXT,
   cta_url TEXT,
+  audience_type TEXT NOT NULL DEFAULT 'marketing'
+    CHECK (audience_type IN ('marketing', 'internal')),
   status TEXT NOT NULL DEFAULT 'draft'
     CHECK (status IN ('draft', 'sending', 'paused', 'completed', 'cancelled')),
   audience_count INTEGER NOT NULL DEFAULT 0,
@@ -151,7 +173,8 @@ CREATE INDEX IF NOT EXISTS campaigns_created_idx
 CREATE TABLE IF NOT EXISTS campaign_recipients (
   id UUID PRIMARY KEY,
   campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-  contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
+  internal_recipient_id UUID REFERENCES internal_recipients(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT,
   status TEXT NOT NULL DEFAULT 'queued'
@@ -163,8 +186,23 @@ CREATE TABLE IF NOT EXISTS campaign_recipients (
   error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (campaign_id, contact_id)
+  UNIQUE (campaign_id, contact_id),
+  UNIQUE (campaign_id, internal_recipient_id),
+  CHECK (
+    (contact_id IS NOT NULL AND internal_recipient_id IS NULL)
+    OR (contact_id IS NULL AND internal_recipient_id IS NOT NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
   ON campaign_recipients (campaign_id, status);
+
+ALTER TABLE unsubscribe_tokens
+  ALTER COLUMN contact_id DROP NOT NULL;
+
+ALTER TABLE unsubscribe_tokens
+  ADD COLUMN IF NOT EXISTS internal_recipient_id UUID
+    REFERENCES internal_recipients(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS unsubscribe_tokens_internal_idx
+  ON unsubscribe_tokens (internal_recipient_id);

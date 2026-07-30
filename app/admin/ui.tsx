@@ -82,6 +82,7 @@ export function CampaignCreateForm() {
         previewText: data.get("previewText"),
         heading: data.get("heading"),
         content: data.get("content"),
+        audienceType: data.get("audienceType"),
         ctaLabel: data.get("ctaLabel"),
         ctaUrl: data.get("ctaUrl"),
       }),
@@ -101,6 +102,13 @@ export function CampaignCreateForm() {
 
   return (
     <form className="campaign-form" onSubmit={submit}>
+      <label>
+        <span>Alıcı grubu</span>
+        <select name="audienceType" required defaultValue="internal">
+          <option value="internal">Şirket içi liste</option>
+          <option value="marketing">İzinli pazarlama aboneleri</option>
+        </select>
+      </label>
       <div className="admin-field-grid">
         <label>
           <span>Kampanya adı</span>
@@ -154,6 +162,100 @@ export function CampaignCreateForm() {
         {loading ? "Oluşturuluyor…" : "Taslağı ve alıcı listesini oluştur"}
       </button>
       {message ? <p className="admin-error">{message}</p> : null}
+    </form>
+  );
+}
+
+function parseInternalRecipients(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const angled = line.match(/^(.+?)\s*<([^>]+)>$/);
+      if (angled) {
+        return { name: angled[1].trim(), email: angled[2].trim() };
+      }
+      const [email, ...nameParts] = line.split(",");
+      return {
+        email: email.trim(),
+        name: nameParts.join(",").trim() || null,
+      };
+    });
+}
+
+export function InternalRecipientImportForm() {
+  const router = useRouter();
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const recipients = parseInternalRecipients(
+      String(data.get("recipients") || ""),
+    );
+    const response = await fetch("/api/admin/internal-recipients", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recipients,
+        authorized: data.get("authorized") === "on",
+      }),
+    });
+    const result = (await response.json()) as {
+      processed?: number;
+      active?: number;
+      message?: string;
+    };
+    if (!response.ok) {
+      setMessage(result.message || "Adresler eklenemedi.");
+      setLoading(false);
+      return;
+    }
+    form.reset();
+    setMessage(
+      `${result.processed || 0} adres işlendi. Aktif şirket içi liste: ${result.active || 0}.`,
+    );
+    setLoading(false);
+    router.refresh();
+  }
+
+  return (
+    <form className="campaign-form" onSubmit={submit}>
+      <label>
+        <span>Çalışan adresleri — her satıra bir kişi</span>
+        <textarea
+          name="recipients"
+          required
+          rows={7}
+          placeholder={
+            "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
+          }
+        />
+      </label>
+      <label className="internal-authorization">
+        <input name="authorized" required type="checkbox" />
+        <span>
+          Bu adresleri şirket içi iletişim kapsamında kullanmaya yetkili
+          olduğumu ve listeyi güncel tutacağımı beyan ediyorum.
+        </span>
+      </label>
+      <button className="admin-primary" disabled={loading} type="submit">
+        {loading ? "Ekleniyor…" : "Şirket içi listeye ekle"}
+      </button>
+      {message ? (
+        <p
+          className={
+            message.includes("işlendi") ? "admin-success" : "admin-error"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </form>
   );
 }

@@ -5,16 +5,19 @@ import { ensureDatabaseSchema } from "@/lib/schema";
 import {
   AdminLogoutButton,
   CampaignCreateForm,
+  InternalRecipientImportForm,
 } from "./ui";
 
 function statusLabel(status: string) {
-  return {
-    draft: "Taslak",
-    sending: "Gönderiliyor",
-    paused: "Duraklatıldı",
-    completed: "Tamamlandı",
-    cancelled: "İptal edildi",
-  }[status] || status;
+  return (
+    {
+      draft: "Taslak",
+      sending: "Gönderiliyor",
+      paused: "Duraklatıldı",
+      completed: "Tamamlandı",
+      cancelled: "İptal edildi",
+    }[status] || status
+  );
 }
 
 export default async function AdminDashboard() {
@@ -28,12 +31,17 @@ export default async function AdminDashboard() {
         COUNT(*) FILTER (WHERE status = 'active')::int AS active,
         COUNT(*) FILTER (WHERE iys_status = 'pending_registration')::int AS iys_pending,
         (SELECT COUNT(*)::int FROM marketing_eligible_contacts) AS eligible,
-        (SELECT COUNT(*)::int FROM suppressions) AS suppressed
+        (SELECT COUNT(*)::int FROM suppressions) AS suppressed,
+        (
+          SELECT COUNT(*)::int
+          FROM internal_recipients
+          WHERE status = 'active'
+        ) AS internal_active
       FROM contacts
     `,
     sql`
       SELECT
-        id, name, subject, status, audience_count,
+        id, name, subject, status, audience_type, audience_count,
         sent_count, failed_count, skipped_count, created_at
       FROM campaigns
       ORDER BY created_at DESC
@@ -46,7 +54,9 @@ export default async function AdminDashboard() {
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <div className="admin-brand">Falcon<span>Mailing</span></div>
+          <div className="admin-brand">
+            Falcon<span>Mailing</span>
+          </div>
           <p>Kampanya yönetim paneli</p>
         </div>
         <AdminLogoutButton />
@@ -58,6 +68,22 @@ export default async function AdminDashboard() {
         <article className="metric-primary"><span>Gönderime uygun</span><strong>{metrics.eligible}</strong></article>
         <article><span>İYS bekleyen</span><strong>{metrics.iys_pending}</strong></article>
         <article><span>Engellenen</span><strong>{metrics.suppressed}</strong></article>
+        <article className="metric-internal"><span>Şirket içi liste</span><strong>{metrics.internal_active}</strong></article>
+      </section>
+
+      <section className="admin-panel">
+        <div className="panel-heading">
+          <div>
+            <p className="admin-kicker">İç iletişim</p>
+            <h1>Şirket içi alıcılar</h1>
+          </div>
+          <p>
+            Çalışanların kişisel veya kurumsal adreslerini pazarlama
+            abonelerinden ayrı tutar. Listeden ayrılan adresler yeniden
+            etkinleştirilmez.
+          </p>
+        </div>
+        <InternalRecipientImportForm />
       </section>
 
       <section className="admin-panel">
@@ -67,8 +93,9 @@ export default async function AdminDashboard() {
             <h1>Kampanya oluştur</h1>
           </div>
           <p>
-            Abonelikten çıkan, doğrulanmamış, İYS durumu uygun olmayan veya
-            engellenmiş adresler otomatik olarak dışarıda bırakılır.
+            Şirket içi listeyi seçtiğinizde İYS filtresi uygulanmaz. İzinli
+            aboneler seçeneğinde mevcut pazarlama izin korumaları çalışmaya
+            devam eder.
           </p>
         </div>
         <CampaignCreateForm />
@@ -88,6 +115,7 @@ export default async function AdminDashboard() {
                 <tr>
                   <th>Kampanya</th>
                   <th>Durum</th>
+                  <th>Grup</th>
                   <th>Alıcı</th>
                   <th>Gönderilen</th>
                   <th>Başarısız</th>
@@ -103,11 +131,25 @@ export default async function AdminDashboard() {
                         <span>{String(row.subject)}</span>
                       </Link>
                     </td>
-                    <td><span className={`status status-${row.status}`}>{statusLabel(String(row.status))}</span></td>
+                    <td>
+                      <span className={`status status-${row.status}`}>
+                        {statusLabel(String(row.status))}
+                      </span>
+                    </td>
+                    <td>
+                      {row.audience_type === "internal"
+                        ? "Şirket içi"
+                        : "İzinli aboneler"}
+                    </td>
                     <td>{Number(row.audience_count)}</td>
                     <td>{Number(row.sent_count)}</td>
                     <td>{Number(row.failed_count)}</td>
-                    <td>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(String(row.created_at)))}</td>
+                    <td>
+                      {new Intl.DateTimeFormat("tr-TR", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      }).format(new Date(String(row.created_at)))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -120,4 +162,3 @@ export default async function AdminDashboard() {
     </main>
   );
 }
-
