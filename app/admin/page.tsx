@@ -20,8 +20,6 @@ export default async function AdminDashboard() {
         <AdminLogoutButton />
       </header>
 
-      <DeliveryMonitor />
-
       <section className="admin-panel">
         <div className="panel-heading panel-heading-single">
           <div>
@@ -31,6 +29,8 @@ export default async function AdminDashboard() {
         </div>
         <CampaignCreateForm />
       </section>
+
+      <DeliveryMonitor />
     </main>
   );
 }
