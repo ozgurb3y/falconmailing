@@ -107,6 +107,10 @@
   margin-bottom: 30px;
 }
 
+.panel-heading-single {
+  grid-template-columns: 1fr;
+}
+
 .panel-heading h1,
 .panel-heading h2 {
   margin: 0;

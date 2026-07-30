@@ -17,15 +17,11 @@ export default async function AdminDashboard() {
       </header>
 
       <section className="admin-panel">
-        <div className="panel-heading">
+        <div className="panel-heading panel-heading-single">
           <div>
             <p className="admin-kicker">Yeni gönderim</p>
             <h1>Kampanya oluştur</h1>
           </div>
-          <p>
-            Şirket içi gönderimde yalnızca bu formda o anda girdiğiniz adresler
-            kullanılır. Adresler kalıcı bir şirket listesine kaydedilmez.
-          </p>
         </div>
         <CampaignCreateForm />
       </section>

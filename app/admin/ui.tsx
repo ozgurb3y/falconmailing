@@ -145,9 +145,6 @@ export function CampaignCreateForm() {
             name="internalRecipients"
             required
             rows={9}
-            placeholder={
-              "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
-            }
           />
         </label>
       </div>
