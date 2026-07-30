@@ -99,9 +99,9 @@ export function adminCookieOptions() {
 export function isSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return false;
-  const expected = new URL(
+  const requestOrigin = new URL(request.url).origin;
+  const configuredOrigin = new URL(
     process.env.APP_URL || "https://falconmailing.com",
   ).origin;
-  return origin === expected;
+  return origin === requestOrigin || origin === configuredOrigin;
 }
-
