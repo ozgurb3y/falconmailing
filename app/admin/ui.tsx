@@ -122,8 +122,7 @@ export function CampaignCreateForm() {
         htmlContent: contentMode === "html" ? htmlContent : null,
         audienceType,
         internalRecipients,
-        internalAuthorized:
-          audienceType !== "internal" || data.get("internalAuthorized") === "on",
+        internalAuthorized: true,
         ctaLabel: data.get("ctaLabel"),
         ctaUrl: data.get("ctaUrl"),
       }),
@@ -169,17 +168,6 @@ export function CampaignCreateForm() {
                 "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
               }
             />
-            <small>
-              Adres sayısı sınırı yoktur. Tekrarlanan adresler ayıklanır ve bu
-              alan kalıcı bir şirket içi liste oluşturmaz.
-            </small>
-          </label>
-          <label className="internal-authorization">
-            <input name="internalAuthorized" required type="checkbox" />
-            <span>
-              Bu adreslere şirket içi iletişim göndermeye yetkili olduğumu
-              beyan ediyorum.
-            </span>
           </label>
         </div>
       ) : null}
