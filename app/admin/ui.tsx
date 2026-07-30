@@ -247,7 +247,7 @@ export function CampaignCreateForm() {
 }
 
 function parseInternalRecipients(value: string) {
-  return value
+  const recipients = value
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
@@ -262,6 +262,15 @@ function parseInternalRecipients(value: string) {
         name: nameParts.join(",").trim() || null,
       };
     });
+
+  return Array.from(
+    new Map(
+      recipients.map((recipient) => [
+        recipient.email.toLowerCase(),
+        recipient,
+      ]),
+    ).values(),
+  );
 }
 
 export function InternalRecipientImportForm() {
@@ -278,27 +287,41 @@ export function InternalRecipientImportForm() {
     const recipients = parseInternalRecipients(
       String(data.get("recipients") || ""),
     );
-    const response = await fetch("/api/admin/internal-recipients", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        recipients,
-        authorized: data.get("authorized") === "on",
-      }),
-    });
-    const result = (await response.json()) as {
-      processed?: number;
-      active?: number;
-      message?: string;
-    };
-    if (!response.ok) {
-      setMessage(result.message || "Adresler eklenemedi.");
-      setLoading(false);
-      return;
+    const authorized = data.get("authorized") === "on";
+    const chunkSize = 500;
+    let processed = 0;
+    let active = 0;
+
+    for (let index = 0; index < recipients.length; index += chunkSize) {
+      setMessage(
+        `${Math.min(index + chunkSize, recipients.length)} / ${recipients.length} adres işleniyor…`,
+      );
+      const response = await fetch("/api/admin/internal-recipients", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recipients: recipients.slice(index, index + chunkSize),
+          authorized,
+        }),
+      });
+      const result = (await response.json()) as {
+        processed?: number;
+        active?: number;
+        message?: string;
+      };
+      if (!response.ok) {
+        setMessage(
+          `Eklenen adres: ${processed}. Kalan bölüm eklenemedi. ${result.message || ""}`.trim(),
+        );
+        setLoading(false);
+        return;
+      }
+      processed += result.processed || 0;
+      active = result.active || active;
     }
     form.reset();
     setMessage(
-      `${result.processed || 0} adres işlendi. Aktif şirket içi liste: ${result.active || 0}.`,
+      `${processed} adres işlendi. Aktif şirket içi liste: ${active}.`,
     );
     setLoading(false);
     router.refresh();
@@ -316,6 +339,10 @@ export function InternalRecipientImportForm() {
             "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
           }
         />
+        <small>
+          Adres sayısı sınırı yoktur. Büyük listeler otomatik olarak parçalara
+          ayrılarak yüklenir.
+        </small>
       </label>
       <label className="internal-authorization">
         <input name="authorized" required type="checkbox" />

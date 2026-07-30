@@ -15,7 +15,7 @@ const recipientSchema = z.object({
 });
 
 const importSchema = z.object({
-  recipients: z.array(recipientSchema).min(1).max(500),
+  recipients: z.array(recipientSchema).min(1),
   authorized: z.literal(true),
 });
 
@@ -99,4 +99,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
