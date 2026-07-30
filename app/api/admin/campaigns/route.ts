@@ -7,6 +7,10 @@ import {
 } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { ensureDatabaseSchema } from "@/lib/schema";
+import {
+  campaignHtmlToText,
+  sanitizeCampaignHtml,
+} from "@/lib/campaign-html";
 
 export const runtime = "nodejs";
 
@@ -15,8 +19,10 @@ const campaignSchema = z
     name: z.string().trim().min(3).max(120),
     subject: z.string().trim().min(3).max(180),
     previewText: z.string().trim().max(220).optional().nullable(),
-    heading: z.string().trim().min(3).max(180),
-    content: z.string().trim().min(10).max(20_000),
+    contentMode: z.enum(["template", "html"]),
+    heading: z.string().trim().max(180).optional().nullable(),
+    content: z.string().trim().max(20_000).optional().nullable(),
+    htmlContent: z.string().trim().max(500_000).optional().nullable(),
     audienceType: z.enum(["marketing", "internal"]),
     ctaLabel: z.string().trim().max(80).optional().nullable(),
     ctaUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal("")),
@@ -26,7 +32,39 @@ const campaignSchema = z
       (!value.ctaLabel && !value.ctaUrl) ||
       Boolean(value.ctaLabel && value.ctaUrl),
     { message: "Buton metni ve bağlantısı birlikte girilmelidir." },
-  );
+  )
+  .superRefine((value, context) => {
+    if (
+      value.contentMode === "template" &&
+      (!value.heading || value.heading.length < 3)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["heading"],
+        message: "E-posta başlığı en az 3 karakter olmalıdır.",
+      });
+    }
+    if (
+      value.contentMode === "template" &&
+      (!value.content || value.content.length < 10)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["content"],
+        message: "İçerik en az 10 karakter olmalıdır.",
+      });
+    }
+    if (
+      value.contentMode === "html" &&
+      (!value.htmlContent || value.htmlContent.length < 10)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["htmlContent"],
+        message: "HTML içeriği en az 10 karakter olmalıdır.",
+      });
+    }
+  });
 
 export async function POST(request: Request) {
   try {
@@ -45,17 +83,37 @@ export async function POST(request: Request) {
     const sql = db();
     const campaignId = randomUUID();
     const value = parsed.data;
+    const sanitizedHtml =
+      value.contentMode === "html"
+        ? sanitizeCampaignHtml(value.htmlContent || "")
+        : null;
+    if (
+      value.contentMode === "html" &&
+      campaignHtmlToText(sanitizedHtml || "").length < 3
+    ) {
+      return NextResponse.json(
+        { message: "HTML içeriği temizlendikten sonra boş kaldı." },
+        { status: 400 },
+      );
+    }
+    const heading = value.heading || value.subject;
+    const content =
+      value.contentMode === "html"
+        ? campaignHtmlToText(sanitizedHtml || "") || value.subject
+        : value.content || value.subject;
     await sql`
       INSERT INTO campaigns (
         id, name, subject, preview_text, heading, content,
-        cta_label, cta_url, audience_type, status,
+        cta_label, cta_url, audience_type, content_mode, html_content, status,
         created_by, created_at, updated_at
       )
       VALUES (
         ${campaignId}, ${value.name}, ${value.subject},
-        ${value.previewText || null}, ${value.heading}, ${value.content},
-        ${value.ctaLabel || null}, ${value.ctaUrl || null},
-        ${value.audienceType}, 'draft', 'admin', NOW(), NOW()
+        ${value.previewText || null}, ${heading}, ${content},
+        ${value.contentMode === "template" ? value.ctaLabel || null : null},
+        ${value.contentMode === "template" ? value.ctaUrl || null : null},
+        ${value.audienceType}, ${value.contentMode}, ${sanitizedHtml}, 'draft',
+        'admin', NOW(), NOW()
       )
     `;
     const rows = await sql`

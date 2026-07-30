@@ -34,6 +34,8 @@ type Campaign = {
   cta_label: string | null;
   cta_url: string | null;
   audience_type: "marketing" | "internal";
+  content_mode: "template" | "html";
+  html_content: string | null;
   status: string;
 };
 
@@ -214,6 +216,8 @@ export async function POST(
           content: campaign.content,
           ctaLabel: campaign.cta_label,
           ctaUrl: campaign.cta_url,
+          contentMode: campaign.content_mode,
+          htmlContent: campaign.html_content,
           unsubscribeToken,
           audienceType: campaign.audience_type,
         });

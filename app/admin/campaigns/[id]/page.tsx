@@ -60,18 +60,31 @@ export default async function CampaignDetailPage({
       </section>
 
       <section className="admin-panel email-preview">
-        <p className="admin-kicker">İçerik özeti</p>
-        <h2>{String(campaign.heading)}</h2>
-        <div className="preview-content">
-          {String(campaign.content)
-            .split(/\n{2,}/)
-            .map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        </div>
-        {campaign.cta_label && campaign.cta_url ? (
-          <a href={String(campaign.cta_url)} rel="noreferrer" target="_blank">
-            {String(campaign.cta_label)}
-          </a>
-        ) : null}
+        <p className="admin-kicker">
+          {campaign.content_mode === "html" ? "HTML e-posta ön izlemesi" : "İçerik özeti"}
+        </p>
+        {campaign.content_mode === "html" && campaign.html_content ? (
+          <iframe
+            className="html-preview-frame html-preview-detail"
+            sandbox=""
+            srcDoc={String(campaign.html_content)}
+            title="HTML e-posta ön izlemesi"
+          />
+        ) : (
+          <>
+            <h2>{String(campaign.heading)}</h2>
+            <div className="preview-content">
+              {String(campaign.content)
+                .split(/\n{2,}/)
+                .map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+            </div>
+            {campaign.cta_label && campaign.cta_url ? (
+              <a href={String(campaign.cta_url)} rel="noreferrer" target="_blank">
+                {String(campaign.cta_label)}
+              </a>
+            ) : null}
+          </>
+        )}
       </section>
     </main>
   );

@@ -3,6 +3,28 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+const HTML_EMAIL_STARTER = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f5f7fa;padding:32px 12px">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background-color:#ffffff;border:1px solid #d9e2ec">
+        <tr>
+          <td style="padding:36px;font-family:Arial,sans-serif;color:#102a43">
+            <p style="margin:0 0 18px;color:#52606d">Merhaba {{name}},</p>
+            <h1 style="margin:0 0 20px;font-size:30px;line-height:1.25">Duyuru başlığınız</h1>
+            <p style="margin:0 0 24px;font-size:16px;line-height:1.7">
+              E-posta içeriğinizi buraya ekleyin. Metinleri, görselleri, tabloları ve butonları
+              doğrudan HTML olarak düzenleyebilirsiniz.
+            </p>
+            <a href="https://www.falconmailing.com" style="display:inline-block;background-color:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:5px">
+              Detayları görüntüle
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
+
 export function AdminLoginForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -66,6 +88,8 @@ export function CampaignCreateForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [contentMode, setContentMode] = useState<"html" | "template">("html");
+  const [htmlContent, setHtmlContent] = useState(HTML_EMAIL_STARTER);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,6 +106,8 @@ export function CampaignCreateForm() {
         previewText: data.get("previewText"),
         heading: data.get("heading"),
         content: data.get("content"),
+        contentMode,
+        htmlContent: contentMode === "html" ? htmlContent : null,
         audienceType: data.get("audienceType"),
         ctaLabel: data.get("ctaLabel"),
         ctaUrl: data.get("ctaUrl"),
@@ -124,35 +150,87 @@ export function CampaignCreateForm() {
         <input name="previewText" maxLength={220} />
       </label>
       <label>
-        <span>E-posta başlığı</span>
-        <input name="heading" required maxLength={180} />
+        <span>İçerik düzenleme biçimi</span>
+        <select
+          name="contentMode"
+          value={contentMode}
+          onChange={(event) =>
+            setContentMode(event.target.value as "html" | "template")
+          }
+        >
+          <option value="html">Tam HTML editörü</option>
+          <option value="template">Hazır FalconMailing şablonu</option>
+        </select>
       </label>
-      <label>
-        <span>İçerik</span>
-        <textarea
-          name="content"
-          required
-          minLength={10}
-          maxLength={20000}
-          rows={10}
-          placeholder="Paragrafları boş satırla ayırabilirsiniz."
-        />
-      </label>
-      <div className="admin-field-grid">
-        <label>
-          <span>Buton metni (isteğe bağlı)</span>
-          <input name="ctaLabel" maxLength={80} />
-        </label>
-        <label>
-          <span>Buton bağlantısı</span>
-          <input
-            name="ctaUrl"
-            maxLength={500}
-            placeholder="https://..."
-            type="url"
-          />
-        </label>
-      </div>
+      {contentMode === "html" ? (
+        <div className="html-editor-grid">
+          <label>
+            <span>HTML içeriği</span>
+            <textarea
+              className="html-code-editor"
+              name="htmlContent"
+              required
+              minLength={10}
+              maxLength={500000}
+              rows={24}
+              spellCheck={false}
+              value={htmlContent}
+              onChange={(event) => setHtmlContent(event.target.value)}
+            />
+          </label>
+          <div className="html-preview-panel">
+            <span>Canlı ön izleme</span>
+            <iframe
+              className="html-preview-frame"
+              sandbox=""
+              srcDoc={htmlContent}
+              title="HTML e-posta canlı ön izlemesi"
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          <label>
+            <span>E-posta başlığı</span>
+            <input name="heading" required maxLength={180} />
+          </label>
+          <label>
+            <span>İçerik</span>
+            <textarea
+              name="content"
+              required
+              minLength={10}
+              maxLength={20000}
+              rows={10}
+              placeholder="Paragrafları boş satırla ayırabilirsiniz."
+            />
+          </label>
+          <div className="admin-field-grid">
+            <label>
+              <span>Buton metni (isteğe bağlı)</span>
+              <input name="ctaLabel" maxLength={80} />
+            </label>
+            <label>
+              <span>Buton bağlantısı</span>
+              <input
+                name="ctaUrl"
+                maxLength={500}
+                placeholder="https://..."
+                type="url"
+              />
+            </label>
+          </div>
+        </>
+      )}
+      {contentMode === "html" ? (
+        <div className="admin-notice">
+          Kişiselleştirme için <code>{"{{name}}"}</code> ve{" "}
+          <code>{"{{email}}"}</code> kullanabilirsiniz. Butonlar HTML bağlantısı
+          olarak eklenir. Güvenlik için script, form, iframe, olay işleyicileri ve
+          tehlikeli bağlantılar sunucuda kaldırılır. Zorunlu abonelikten çıkma
+          bölümü her e-postaya otomatik eklenir.
+        </div>
+      ) : null}
       <div className="admin-notice">
         Kampanya oluşturulduğunda yalnızca o anda gönderime uygun olan kişilerin
         güvenli bir alıcı görüntüsü alınır. Gönderim sırasında uygunluk tekrar

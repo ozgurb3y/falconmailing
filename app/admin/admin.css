@@ -168,6 +168,56 @@
   min-height: 44px;
 }
 
+.html-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.campaign-form .html-code-editor {
+  min-height: 620px;
+  resize: vertical;
+  background: #101923;
+  color: #e6edf3;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.html-preview-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 7px;
+  min-width: 0;
+}
+
+.html-preview-panel > span {
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.html-preview-frame {
+  width: 100%;
+  min-height: 620px;
+  border: 1px solid #bcccdc;
+  border-radius: 6px;
+  background: white;
+}
+
+.html-preview-detail {
+  min-height: 720px;
+}
+
+.admin-notice code {
+  border-radius: 3px;
+  padding: 2px 5px;
+  background: #fff;
+  color: var(--admin-ink);
+  font-family: Consolas, "Courier New", monospace;
+}
+
 .admin-form input:focus,
 .campaign-form input:focus,
 .campaign-form select:focus,
@@ -423,8 +473,10 @@
 @media (max-width: 900px) {
   .admin-metrics { grid-template-columns: repeat(2, 1fr); }
   .panel-heading,
-  .admin-field-grid { grid-template-columns: 1fr; }
+  .admin-field-grid,
+  .html-editor-grid { grid-template-columns: 1fr; }
   .campaign-summary { grid-template-columns: 1fr; }
+  .html-preview-frame { min-height: 560px; }
 }
 
 @media (max-width: 560px) {

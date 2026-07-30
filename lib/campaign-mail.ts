@@ -1,4 +1,8 @@
 import nodemailer from "nodemailer";
+import {
+  campaignHtmlToText,
+  personalizeCampaignHtml,
+} from "@/lib/campaign-html";
 
 let campaignTransporter: nodemailer.Transporter | undefined;
 
@@ -51,6 +55,8 @@ export async function sendCampaignEmail({
   content,
   ctaLabel,
   ctaUrl,
+  contentMode,
+  htmlContent,
   unsubscribeToken,
   audienceType,
 }: {
@@ -62,6 +68,8 @@ export async function sendCampaignEmail({
   content: string;
   ctaLabel?: string | null;
   ctaUrl?: string | null;
+  contentMode: "template" | "html";
+  htmlContent?: string | null;
   unsubscribeToken: string;
   audienceType: "marketing" | "internal";
 }) {
@@ -81,13 +89,36 @@ export async function sendCampaignEmail({
     audienceType === "internal"
       ? "Bu e-posta şirket içi iletişim listeniz kapsamında gönderildi."
       : "Bu e-postayı FalconMailing iletişimlerine izin verdiğiniz için aldınız.";
+  const mandatoryFooter = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:34px;border-top:1px solid #d9e2ec">
+      <tr><td style="padding-top:20px;color:#7b8794;font-family:Arial,sans-serif;font-size:12px;line-height:1.65">
+        ${footerReason}
+        <a href="${escapeHtml(unsubscribeUrl)}" style="color:#c2410c">Abonelikten çıkın</a>.
+        <br>FalconMailing · <a href="${escapeHtml(appUrl)}" style="color:#52606d">${escapeHtml(appUrl)}</a>
+      </td></tr>
+    </table>`;
+
+  const customHtml =
+    contentMode === "html" && htmlContent
+      ? personalizeCampaignHtml({
+          html: htmlContent,
+          name: recipientName,
+          email: to,
+        })
+      : null;
+  const customHtmlWithFooter = customHtml
+    ? `${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${escapeHtml(previewText)}</div>` : ""}${customHtml}${mandatoryFooter}`
+    : null;
+  const plainTextContent = customHtml
+    ? campaignHtmlToText(customHtml)
+    : `${greeting}\n\n${heading}\n\n${content}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ""}`;
 
   const result = await transporter().sendMail({
     from: `"${fromName}" <${fromAddress}>`,
     to,
     subject,
-    text: `${greeting}\n\n${heading}\n\n${content}${ctaLabel && ctaUrl ? `\n\n${ctaLabel}: ${ctaUrl}` : ""}\n\nAbonelikten çık: ${unsubscribeUrl}\n\nFalconMailing\n${appUrl}`,
-    html: `<!doctype html>
+    text: `${plainTextContent}\n\nAbonelikten çık: ${unsubscribeUrl}\n\nFalconMailing\n${appUrl}`,
+    html: customHtmlWithFooter || `<!doctype html>
 <html lang="tr">
   <body style="margin:0;background:#f7f4ee;font-family:Arial,sans-serif;color:#102a43">
     <div style="display:none;max-height:0;overflow:hidden">${escapeHtml(previewText || "")}</div>

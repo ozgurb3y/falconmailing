@@ -152,6 +152,9 @@ CREATE TABLE IF NOT EXISTS campaigns (
   content TEXT NOT NULL,
   cta_label TEXT,
   cta_url TEXT,
+  content_mode TEXT NOT NULL DEFAULT 'template'
+    CHECK (content_mode IN ('template', 'html')),
+  html_content TEXT,
   audience_type TEXT NOT NULL DEFAULT 'marketing'
     CHECK (audience_type IN ('marketing', 'internal')),
   status TEXT NOT NULL DEFAULT 'draft'
@@ -173,6 +176,13 @@ CREATE INDEX IF NOT EXISTS campaigns_created_idx
 ALTER TABLE campaigns
   ADD COLUMN IF NOT EXISTS audience_type TEXT NOT NULL DEFAULT 'marketing'
     CHECK (audience_type IN ('marketing', 'internal'));
+
+ALTER TABLE campaigns
+  ADD COLUMN IF NOT EXISTS content_mode TEXT NOT NULL DEFAULT 'template'
+    CHECK (content_mode IN ('template', 'html'));
+
+ALTER TABLE campaigns
+  ADD COLUMN IF NOT EXISTS html_content TEXT;
 
 CREATE TABLE IF NOT EXISTS campaign_recipients (
   id UUID PRIMARY KEY,
