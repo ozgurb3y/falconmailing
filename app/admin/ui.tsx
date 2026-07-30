@@ -270,24 +270,8 @@ export function CampaignCreateForm() {
           </div>
         </>
       )}
-      {contentMode === "html" ? (
-        <div className="admin-notice">
-          Kişiselleştirme için <code>{"{{name}}"}</code> ve{" "}
-          <code>{"{{email}}"}</code> kullanabilirsiniz. Butonlar HTML bağlantısı
-          olarak eklenir. <code>{"<style>"}</code> içindeki CSS kuralları Gmail
-          uyumluluğu için otomatik olarak satır içi stile dönüştürülür. Güvenlik
-          için script, form, iframe, olay işleyicileri ve tehlikeli bağlantılar
-          sunucuda kaldırılır. Zorunlu abonelikten çıkma bölümü her e-postaya
-          otomatik eklenir.
-        </div>
-      ) : null}
-      <div className="admin-notice">
-        {audienceType === "internal"
-          ? "Yalnızca yukarıdaki alana bu gönderim için girdiğiniz adresler kuyruğa alınır. Kalıcı şirket içi kişi listesi oluşturulmaz."
-          : "Kampanya oluşturulduğunda yalnızca o anda gönderime uygun izinli abonelerin güvenli bir alıcı görüntüsü alınır. Gönderim sırasında uygunluk tekrar kontrol edilir."}
-      </div>
       <button className="admin-primary" disabled={loading} type="submit">
-        {loading ? "Oluşturuluyor…" : "Taslağı ve gönderim kuyruğunu oluştur"}
+        Gönder
       </button>
       {message ? <p className="admin-error">{message}</p> : null}
     </form>
