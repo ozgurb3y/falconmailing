@@ -93,9 +93,6 @@ export function CampaignCreateForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [audienceType, setAudienceType] = useState<"internal" | "marketing">(
-    "internal",
-  );
   const [htmlContent, setHtmlContent] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -104,10 +101,9 @@ export function CampaignCreateForm() {
     setMessage("");
     const form = event.currentTarget;
     const data = new FormData(form);
-    const internalRecipients =
-      audienceType === "internal"
-        ? parseInternalRecipients(String(data.get("internalRecipients") || ""))
-        : [];
+    const internalRecipients = parseInternalRecipients(
+      String(data.get("internalRecipients") || ""),
+    );
     const subject = String(data.get("subject") || "");
     const response = await fetch("/api/admin/campaigns", {
       method: "POST",
@@ -120,7 +116,7 @@ export function CampaignCreateForm() {
         content: null,
         contentMode: "html",
         htmlContent,
-        audienceType,
+        audienceType: "internal",
         internalRecipients,
         internalAuthorized: true,
         ctaLabel: null,
@@ -142,35 +138,19 @@ export function CampaignCreateForm() {
 
   return (
     <form className="campaign-form" onSubmit={submit}>
-      <label>
-        <span>Alıcı grubu</span>
-        <select
-          name="audienceType"
-          required
-          value={audienceType}
-          onChange={(event) =>
-            setAudienceType(event.target.value as "internal" | "marketing")
-          }
-        >
-          <option value="internal">Bu gönderime özel adresler</option>
-          <option value="marketing">İzinli pazarlama aboneleri</option>
-        </select>
-      </label>
-      {audienceType === "internal" ? (
-        <div className="instant-recipient-box">
-          <label>
-            <span>Gönderilecek e-posta adresleri — her satıra bir kişi</span>
-            <textarea
-              name="internalRecipients"
-              required
-              rows={9}
-              placeholder={
-                "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
-              }
-            />
-          </label>
-        </div>
-      ) : null}
+      <div className="instant-recipient-box">
+        <label>
+          <span>Gönderilecek e-posta adresleri — her satıra bir kişi</span>
+          <textarea
+            name="internalRecipients"
+            required
+            rows={9}
+            placeholder={
+              "calisan@ornek.com, Ad Soyad\nAd Soyad <calisan2@ornek.com>"
+            }
+          />
+        </label>
+      </div>
       <label>
         <span>E-posta konusu</span>
         <input name="subject" required maxLength={120} />
