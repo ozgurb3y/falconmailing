@@ -1,5 +1,9 @@
 import { requireAdminPage } from "@/lib/admin-auth";
-import { AdminLogoutButton, CampaignCreateForm } from "./ui";
+import {
+  AdminLogoutButton,
+  CampaignCreateForm,
+  DeliveryMonitor,
+} from "./ui";
 
 export default async function AdminDashboard() {
   await requireAdminPage();
@@ -15,6 +19,8 @@ export default async function AdminDashboard() {
         </div>
         <AdminLogoutButton />
       </header>
+
+      <DeliveryMonitor />
 
       <section className="admin-panel">
         <div className="panel-heading panel-heading-single">

@@ -1,0 +1,81 @@
+import { NextResponse } from "next/server";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { db } from "@/lib/db";
+import { ensureDatabaseSchema } from "@/lib/schema";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ message: "Yetkisiz istek." }, { status: 403 });
+    }
+
+    await ensureDatabaseSchema();
+    const sql = db();
+    const rows = await sql`
+      WITH latest_campaign AS (
+        SELECT
+          id,
+          subject,
+          status,
+          audience_count,
+          sent_count,
+          failed_count,
+          skipped_count,
+          updated_at
+        FROM campaigns
+        ORDER BY created_at DESC
+        LIMIT 1
+      ),
+      monthly_delivery AS (
+        SELECT COUNT(*)::int AS sent
+        FROM campaign_recipients
+        WHERE status = 'sent'
+          AND sent_at >= date_trunc('month', NOW())
+          AND sent_at < date_trunc('month', NOW()) + INTERVAL '1 month'
+      )
+      SELECT
+        latest_campaign.id,
+        latest_campaign.subject,
+        latest_campaign.status,
+        COALESCE(latest_campaign.audience_count, 0)::int AS requested,
+        COALESCE(latest_campaign.sent_count, 0)::int AS sent,
+        COALESCE(latest_campaign.failed_count, 0)::int AS failed,
+        COALESCE(latest_campaign.skipped_count, 0)::int AS skipped,
+        latest_campaign.updated_at,
+        monthly_delivery.sent::int AS monthly_sent
+      FROM monthly_delivery
+      LEFT JOIN latest_campaign ON TRUE
+    `;
+    const row = rows[0];
+
+    return NextResponse.json(
+      {
+        campaignId: row?.id || null,
+        subject: row?.subject || null,
+        status: row?.status || "idle",
+        requested: Number(row?.requested || 0),
+        sent: Number(row?.sent || 0),
+        failed: Number(row?.failed || 0),
+        skipped: Number(row?.skipped || 0),
+        monthlySent: Number(row?.monthly_sent || 0),
+        updatedAt: row?.updated_at || null,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      },
+    );
+  } catch (error) {
+    console.error("Delivery stats failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    });
+    return NextResponse.json(
+      { message: "Gönderim istatistikleri alınamadı." },
+      { status: 503 },
+    );
+  }
+}

@@ -99,6 +99,73 @@
   background: var(--admin-panel);
 }
 
+.delivery-monitor {
+  display: grid;
+  gap: 18px;
+  padding: 26px 30px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: var(--admin-panel);
+}
+
+.delivery-monitor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.delivery-monitor-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.delivery-subject {
+  margin: -7px 0 0;
+  color: var(--admin-slate);
+  font-size: 0.84rem;
+}
+
+.delivery-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.delivery-counts div {
+  padding: 17px 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 7px;
+  background: #202024;
+}
+
+.delivery-counts span,
+.monthly-delivery span {
+  display: block;
+  color: var(--admin-slate);
+  font-size: 0.75rem;
+}
+
+.delivery-counts strong,
+.monthly-delivery strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 1.55rem;
+}
+
+.monthly-delivery {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid var(--admin-line);
+  padding-top: 18px;
+}
+
+.monthly-delivery strong {
+  margin: 0;
+}
+
 .panel-heading {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -273,6 +340,26 @@
   line-height: 1.5;
 }
 
+.recipient-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.recipient-label strong {
+  display: inline-grid;
+  min-width: 38px;
+  min-height: 28px;
+  place-items: center;
+  border: 1px solid #52525b;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: #3f3f46;
+  color: #fff;
+  font-size: 0.78rem;
+}
+
 .admin-primary,
 .admin-danger,
 .admin-ghost {
@@ -404,6 +491,9 @@
 .status-sending { background: #3f3f46; color: #f4f4f5; }
 .status-completed { background: #27272a; color: #d4d4d8; }
 .status-paused { background: #52525b; color: #fff; }
+.status-idle,
+.status-draft,
+.status-cancelled { background: #29292e; color: #d4d4d8; }
 
 .admin-empty {
   color: var(--admin-slate);
@@ -511,4 +601,6 @@
   .admin-panel { padding: 22px 18px; }
   .admin-login-card { padding: 30px 22px; }
   .admin-header { align-items: flex-start; }
+  .delivery-monitor { padding: 22px 18px; }
+  .delivery-counts { grid-template-columns: 1fr; }
 }

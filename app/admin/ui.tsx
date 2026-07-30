@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function AdminLoginForm() {
@@ -89,11 +89,136 @@ function parseInternalRecipients(value: string) {
   );
 }
 
+type DeliveryStats = {
+  campaignId: string | null;
+  subject: string | null;
+  status: string;
+  requested: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  monthlySent: number;
+  updatedAt: string | null;
+};
+
+const emptyDeliveryStats: DeliveryStats = {
+  campaignId: null,
+  subject: null,
+  status: "idle",
+  requested: 0,
+  sent: 0,
+  failed: 0,
+  skipped: 0,
+  monthlySent: 0,
+  updatedAt: null,
+};
+
+function deliveryStatusLabel(status: string) {
+  return (
+    {
+      idle: "Bekliyor",
+      draft: "Hazır",
+      sending: "Gönderiliyor",
+      paused: "Duraklatıldı",
+      completed: "Tamamlandı",
+      cancelled: "İptal edildi",
+    }[status] || status
+  );
+}
+
+export function DeliveryMonitor() {
+  const [stats, setStats] = useState<DeliveryStats>(emptyDeliveryStats);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/admin/delivery-stats", {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as DeliveryStats & {
+          message?: string;
+        };
+        if (!response.ok) {
+          throw new Error(result.message || "İstatistikler alınamadı.");
+        }
+        if (mounted) {
+          setStats(result);
+          setError("");
+        }
+      } catch (refreshError) {
+        if (mounted) {
+          setError(
+            refreshError instanceof Error
+              ? refreshError.message
+              : "İstatistikler alınamadı.",
+          );
+        }
+      }
+    }
+
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 60_000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const progress =
+    stats.requested > 0
+      ? Math.min(100, Math.round((stats.sent / stats.requested) * 100))
+      : 0;
+
+  return (
+    <section className="delivery-monitor" aria-live="polite">
+      <div className="delivery-monitor-heading">
+        <div>
+          <p className="admin-kicker">Canlı takip</p>
+          <h2>İşlemde olan gönderim durumu</h2>
+        </div>
+        <span className={`status status-${stats.status}`}>
+          {deliveryStatusLabel(stats.status)}
+        </span>
+      </div>
+      {stats.subject ? <p className="delivery-subject">{stats.subject}</p> : null}
+      <div
+        className="progress-track"
+        role="progressbar"
+        aria-label="Gönderim ilerlemesi"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <div className="delivery-counts">
+        <div>
+          <span>Talep oluşturulan</span>
+          <strong>{stats.requested.toLocaleString("tr-TR")}</strong>
+        </div>
+        <div>
+          <span>Gönderilen</span>
+          <strong>{stats.sent.toLocaleString("tr-TR")}</strong>
+        </div>
+      </div>
+      <div className="monthly-delivery">
+        <span>Bu ay toplam gönderilen mail</span>
+        <strong>{stats.monthlySent.toLocaleString("tr-TR")}</strong>
+      </div>
+      {error ? <p className="admin-error">{error}</p> : null}
+    </section>
+  );
+}
+
 export function CampaignCreateForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [htmlContent, setHtmlContent] = useState("");
+  const [recipientLineCount, setRecipientLineCount] = useState(0);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,11 +265,21 @@ export function CampaignCreateForm() {
     <form className="campaign-form" onSubmit={submit}>
       <div className="instant-recipient-box">
         <label>
-          <span>Gönderilecek e-posta adresleri — her satıra bir kişi</span>
+          <span className="recipient-label">
+            Gönderilecek e-posta adresleri
+            <strong>{recipientLineCount.toLocaleString("tr-TR")}</strong>
+          </span>
           <textarea
             name="internalRecipients"
             required
             rows={9}
+            onChange={(event) =>
+              setRecipientLineCount(
+                event.target.value
+                  .split(/\r?\n/)
+                  .filter((line) => line.trim().length > 0).length,
+              )
+            }
           />
         </label>
       </div>
