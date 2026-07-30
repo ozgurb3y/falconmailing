@@ -96,7 +96,6 @@ export function CampaignCreateForm() {
   const [audienceType, setAudienceType] = useState<"internal" | "marketing">(
     "internal",
   );
-  const [contentMode, setContentMode] = useState<"html" | "template">("html");
   const [htmlContent, setHtmlContent] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -109,22 +108,23 @@ export function CampaignCreateForm() {
       audienceType === "internal"
         ? parseInternalRecipients(String(data.get("internalRecipients") || ""))
         : [];
+    const subject = String(data.get("subject") || "");
     const response = await fetch("/api/admin/campaigns", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: data.get("name"),
-        subject: data.get("subject"),
-        previewText: data.get("previewText"),
-        heading: data.get("heading"),
-        content: data.get("content"),
-        contentMode,
-        htmlContent: contentMode === "html" ? htmlContent : null,
+        name: subject,
+        subject,
+        previewText: null,
+        heading: null,
+        content: null,
+        contentMode: "html",
+        htmlContent,
         audienceType,
         internalRecipients,
         internalAuthorized: true,
-        ctaLabel: data.get("ctaLabel"),
-        ctaUrl: data.get("ctaUrl"),
+        ctaLabel: null,
+        ctaUrl: null,
       }),
     });
     const result = (await response.json()) as {
@@ -171,93 +171,35 @@ export function CampaignCreateForm() {
           </label>
         </div>
       ) : null}
-      <div className="admin-field-grid">
-        <label>
-          <span>Kampanya adı</span>
-          <input name="name" required maxLength={120} />
-        </label>
-        <label>
-          <span>E-posta konusu</span>
-          <input name="subject" required maxLength={180} />
-        </label>
-      </div>
       <label>
-        <span>Ön izleme metni</span>
-        <input name="previewText" maxLength={220} />
+        <span>E-posta konusu</span>
+        <input name="subject" required maxLength={120} />
       </label>
-      <label>
-        <span>İçerik düzenleme biçimi</span>
-        <select
-          name="contentMode"
-          value={contentMode}
-          onChange={(event) =>
-            setContentMode(event.target.value as "html" | "template")
-          }
-        >
-          <option value="html">Tam HTML editörü</option>
-          <option value="template">Hazır FalconMailing şablonu</option>
-        </select>
-      </label>
-      {contentMode === "html" ? (
-        <div className="html-editor-grid">
-          <label>
-            <span>HTML içeriği</span>
-            <textarea
-              className="html-code-editor"
-              name="htmlContent"
-              required
-              minLength={10}
-              maxLength={500000}
-              rows={24}
-              spellCheck={false}
-              value={htmlContent}
-              onChange={(event) => setHtmlContent(event.target.value)}
-            />
-          </label>
-          <div className="html-preview-panel">
-            <span>Canlı ön izleme</span>
-            <iframe
-              className="html-preview-frame"
-              sandbox=""
-              srcDoc={htmlContent}
-              title="HTML e-posta canlı ön izlemesi"
-            />
-          </div>
+      <div className="html-editor-grid">
+        <label>
+          <span>HTML içeriği</span>
+          <textarea
+            className="html-code-editor"
+            name="htmlContent"
+            required
+            minLength={10}
+            maxLength={500000}
+            rows={24}
+            spellCheck={false}
+            value={htmlContent}
+            onChange={(event) => setHtmlContent(event.target.value)}
+          />
+        </label>
+        <div className="html-preview-panel">
+          <span>Canlı ön izleme</span>
+          <iframe
+            className="html-preview-frame"
+            sandbox=""
+            srcDoc={htmlContent}
+            title="HTML e-posta canlı ön izlemesi"
+          />
         </div>
-      ) : (
-        <>
-          <label>
-            <span>E-posta başlığı</span>
-            <input name="heading" required maxLength={180} />
-          </label>
-          <label>
-            <span>İçerik</span>
-            <textarea
-              name="content"
-              required
-              minLength={10}
-              maxLength={20000}
-              rows={10}
-              placeholder="Paragrafları boş satırla ayırabilirsiniz."
-            />
-          </label>
-          <div className="admin-field-grid">
-            <label>
-              <span>Buton metni (isteğe bağlı)</span>
-              <input name="ctaLabel" maxLength={80} />
-            </label>
-            <label>
-              <span>Buton bağlantısı</span>
-              <input
-                name="ctaUrl"
-                maxLength={500}
-                placeholder="https://..."
-                type="url"
-              />
-            </label>
-          </div>
-        </>
-      )}
+      </div>
       <button className="admin-primary" disabled={loading} type="submit">
         Gönder
       </button>
