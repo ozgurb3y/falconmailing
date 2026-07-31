@@ -48,7 +48,6 @@ export default async function CampaignDetailPage({
         </div>
         <CampaignSender
           campaignId={id}
-          subject={String(campaign.subject)}
           initial={{
             status: String(campaign.status),
             sent_count: Number(campaign.sent_count),

@@ -257,7 +257,44 @@ export function CampaignCreateForm() {
       setLoading(false);
       return;
     }
-    router.push(`/admin/campaigns/${result.id}`);
+
+    try {
+      let delivery: DeliveryState;
+      do {
+        const sendResponse = await fetch(
+          `/api/admin/campaigns/${result.id}/send`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "send" }),
+          },
+        );
+        delivery = (await sendResponse.json()) as DeliveryState;
+        if (!sendResponse.ok) {
+          throw new Error(
+            (delivery as DeliveryState & { message?: string }).message ||
+              "Gönderim başlatılamadı.",
+          );
+        }
+        if (delivery.status === "completed" || delivery.remaining === 0) {
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+      } while (delivery.status === "sending");
+
+      form.reset();
+      setHtmlContent("");
+      setRecipientLineCount(0);
+      setMessage("Gönderim tamamlandı.");
+    } catch (sendError) {
+      setMessage(
+        sendError instanceof Error
+          ? sendError.message
+          : "Gönderim başlatılamadı.",
+      );
+    }
+
+    setLoading(false);
     router.refresh();
   }
 
@@ -330,16 +367,13 @@ type DeliveryState = {
 
 export function CampaignSender({
   campaignId,
-  subject,
   initial,
 }: {
   campaignId: string;
-  subject: string;
   initial: DeliveryState;
 }) {
   const router = useRouter();
   const [state, setState] = useState(initial);
-  const [confirmSubject, setConfirmSubject] = useState("");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -404,26 +438,12 @@ export function CampaignSender({
         <span><strong>{state.remaining}</strong> bekliyor</span>
       </div>
 
-      {state.status === "draft" ? (
-        <label className="confirm-field">
-          <span>Gönderimi açmak için e-posta konusunu aynen yazın:</span>
-          <input
-            onChange={(event) => setConfirmSubject(event.target.value)}
-            value={confirmSubject}
-          />
-        </label>
-      ) : null}
-
       <div className="send-actions">
         {state.status === "draft" || state.status === "sending" ? (
           <>
             <button
               className="admin-danger"
-              disabled={
-                running ||
-                (state.status === "draft" && confirmSubject !== subject) ||
-                Number(state.remaining) === 0
-              }
+              disabled={running || Number(state.remaining) === 0}
               onClick={run}
               type="button"
             >
