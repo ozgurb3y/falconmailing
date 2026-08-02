@@ -21,8 +21,14 @@ function transporter() {
     requireTLS: true,
     auth: { user: username, pass: password },
     pool: true,
-    maxConnections: 4,
-    maxMessages: 100,
+    maxConnections: Math.max(
+      1,
+      Math.min(10, Number(process.env.CAMPAIGN_SMTP_CONNECTIONS || 6)),
+    ),
+    maxMessages: 500,
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 30_000,
   });
   return campaignTransporter;
 }

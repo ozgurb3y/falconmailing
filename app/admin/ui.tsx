@@ -132,8 +132,10 @@ export function DeliveryMonitor() {
 
   useEffect(() => {
     let mounted = true;
+    let timer: number | undefined;
 
     async function refresh() {
+      let nextRefreshMs = 15_000;
       try {
         const response = await fetch("/api/admin/delivery-stats", {
           cache: "no-store",
@@ -147,6 +149,7 @@ export function DeliveryMonitor() {
         if (mounted) {
           setStats(result);
           setError("");
+          nextRefreshMs = result.status === "sending" ? 5_000 : 30_000;
         }
       } catch (refreshError) {
         if (mounted) {
@@ -156,14 +159,17 @@ export function DeliveryMonitor() {
               : "İstatistikler alınamadı.",
           );
         }
+      } finally {
+        if (mounted) {
+          timer = window.setTimeout(() => void refresh(), nextRefreshMs);
+        }
       }
     }
 
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 60_000);
     return () => {
       mounted = false;
-      window.clearInterval(interval);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, []);
 
@@ -259,33 +265,29 @@ export function CampaignCreateForm() {
     }
 
     try {
-      let delivery: DeliveryState;
-      do {
-        const sendResponse = await fetch(
-          `/api/admin/campaigns/${result.id}/send`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ action: "send" }),
-          },
-        );
-        delivery = (await sendResponse.json()) as DeliveryState;
-        if (!sendResponse.ok) {
-          throw new Error(
-            (delivery as DeliveryState & { message?: string }).message ||
-              "Gönderim başlatılamadı.",
-          );
-        }
-        if (delivery.status === "completed" || delivery.remaining === 0) {
-          break;
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-      } while (delivery.status === "sending");
+      const sendResponse = await fetch(
+        `/api/admin/campaigns/${result.id}/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "send" }),
+        },
+      );
+      const delivery = (await sendResponse.json()) as DeliveryState & {
+        message?: string;
+      };
+      if (!sendResponse.ok) {
+        throw new Error(delivery.message || "Gönderim başlatılamadı.");
+      }
 
       form.reset();
       setHtmlContent("");
       setRecipientLineCount(0);
-      setMessage("Gönderim tamamlandı.");
+      setMessage(
+        delivery.status === "completed"
+          ? "Gönderim tamamlandı."
+          : "Gönderim arka planda başlatıldı. Bu sayfayı kapatabilirsiniz.",
+      );
     } catch (sendError) {
       setMessage(
         sendError instanceof Error
@@ -401,12 +403,7 @@ export function CampaignSender({
     setRunning(true);
     setMessage("");
     try {
-      let next = state;
-      do {
-        next = await action("send");
-        if (next.status === "completed" || next.remaining === 0) break;
-        await new Promise((resolve) => window.setTimeout(resolve, 900));
-      } while (next.status === "sending");
+      await action("send");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Gönderim durdu.");
     } finally {
@@ -474,9 +471,8 @@ export function CampaignSender({
       </div>
       {message ? <p className="admin-error">{message}</p> : null}
       <p className="send-hint">
-        Gönderim güvenli gruplar halinde ilerler. Bu sayfa kapanırsa kampanya
-        durmaz fakat sıradaki gruplar için sayfaya dönüp “devam et” düğmesine
-        basmanız gerekir.
+        Gönderim güvenli gruplar halinde sunucuda ilerler. Sayfayı kapatmanız,
+        oturumun sona ermesi veya bilgisayarın kapanması kampanyayı durdurmaz.
       </p>
     </section>
   );

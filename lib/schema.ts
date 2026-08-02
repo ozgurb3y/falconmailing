@@ -146,6 +146,10 @@ const statements = [
       CHECK (content_mode IN ('template', 'html'))`,
   `ALTER TABLE campaigns
     ADD COLUMN IF NOT EXISTS html_content TEXT`,
+  `ALTER TABLE campaigns
+    ADD COLUMN IF NOT EXISTS worker_token UUID`,
+  `ALTER TABLE campaigns
+    ADD COLUMN IF NOT EXISTS worker_lease_until TIMESTAMPTZ`,
   `CREATE TABLE IF NOT EXISTS email_suppressions (
     id UUID PRIMARY KEY,
     email TEXT NOT NULL,
@@ -192,6 +196,9 @@ const statements = [
     WHERE internal_recipient_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
     ON campaign_recipients (campaign_id, status)`,
+  `CREATE INDEX IF NOT EXISTS campaigns_stalled_worker_idx
+    ON campaigns (worker_lease_until)
+    WHERE status = 'sending'`,
   `ALTER TABLE unsubscribe_tokens
     ALTER COLUMN contact_id DROP NOT NULL`,
   `ALTER TABLE unsubscribe_tokens

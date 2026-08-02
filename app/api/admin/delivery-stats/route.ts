@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { claimCampaignWorker, runCampaignWorker } from "@/lib/campaign-worker";
 import { db } from "@/lib/db";
 import { ensureDatabaseSchema } from "@/lib/schema";
 
@@ -26,7 +27,7 @@ export async function GET() {
           skipped_count,
           updated_at
         FROM campaigns
-        ORDER BY created_at DESC
+        ORDER BY (status = 'sending') DESC, created_at DESC
         LIMIT 1
       ),
       monthly_delivery AS (
@@ -50,6 +51,21 @@ export async function GET() {
       LEFT JOIN latest_campaign ON TRUE
     `;
     const row = rows[0];
+    if (row?.id && row.status === "sending") {
+      const token = await claimCampaignWorker(String(row.id));
+      if (token) {
+        after(async () => {
+          try {
+            await runCampaignWorker(String(row.id), token);
+          } catch (error) {
+            console.error("Campaign recovery worker failed", {
+              campaignId: String(row.id),
+              message: error instanceof Error ? error.message : "unknown",
+            });
+          }
+        });
+      }
+    }
     const requested = Number(row?.requested || 0);
     const sent = Number(row?.sent || 0);
     const fullyDelivered = requested > 0 && sent >= requested;

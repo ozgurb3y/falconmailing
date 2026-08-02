@@ -46,6 +46,13 @@ bir `internal_recipients` listesi bulunur. Yönetici kampanya oluştururken
 “Şirket içi liste” grubunu seçebilir; bu grupta İYS filtresi uygulanmaz.
 Listeden ayrılan veya pasifleştirilen çalışan adresleri yeniden hedeflenmez.
 
+Kampanya gönderimi tarayıcıdan bağımsız bir sunucu işçisiyle ilerler. İşçi
+görevi veritabanında süreli olarak sahiplenir, kontrollü SMTP bağlantı havuzu
+kullanır ve sunucu çalışması kesilirse kaldığı kuyruğu yeniden sahiplenir.
+`CAMPAIGN_SMTP_CONNECTIONS`, `CAMPAIGN_BATCH_SIZE` ve
+`CAMPAIGN_BATCHES_PER_INVOCATION` değerleri SES gönderim kotasına göre
+ayarlanabilir.
+
 ## Vercel
 
 Vercel proje ayarlarında:
