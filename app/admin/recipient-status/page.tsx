@@ -18,7 +18,9 @@ export default async function RecipientStatusPage({
           SELECT campaigns.subject, campaigns.status AS campaign_status,
                  campaigns.created_at AS campaign_created_at,
                  recipients.status AS recipient_status,
+                 recipients.delivery_status,
                  recipients.attempt_count, recipients.sent_at,
+                 recipients.delivered_at, recipients.last_delivery_event_at,
                  recipients.ses_message_id, recipients.error_message
           FROM campaign_recipients recipients
           JOIN campaigns ON campaigns.id = recipients.campaign_id
@@ -63,7 +65,9 @@ export default async function RecipientStatusPage({
           {deliveries.map((row, index) => (
             <div key={index}>
               <span>{String(row.subject)}</span>
-              <strong>{String(row.recipient_status)}</strong>
+              <strong>
+                {String(row.recipient_status)} / {String(row.delivery_status)}
+              </strong>
               <small>
                 {new Date(String(row.campaign_created_at)).toLocaleString("tr-TR")}
                 {row.error_message ? ` · ${String(row.error_message)}` : ""}

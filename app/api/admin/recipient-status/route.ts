@@ -35,10 +35,14 @@ export async function GET(request: Request) {
         campaigns.status AS campaign_status,
         campaigns.created_at AS campaign_created_at,
         recipients.status AS recipient_status,
+        recipients.delivery_status,
         recipients.attempt_count,
         recipients.sent_at,
+        recipients.delivered_at,
+        recipients.last_delivery_event_at,
         recipients.ses_message_id,
-        recipients.error_message
+        recipients.error_message,
+        recipients.delivery_event_detail
       FROM campaign_recipients recipients
       JOIN campaigns ON campaigns.id = recipients.campaign_id
       WHERE lower(recipients.email) = ${email}

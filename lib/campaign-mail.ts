@@ -84,6 +84,7 @@ export async function sendCampaignEmail({
   const fromAddress =
     process.env.MAIL_FROM_ADDRESS || "duyuru@send.falconmailing.com";
   const fromName = process.env.MAIL_FROM_NAME || "FalconMailing";
+  const configurationSet = process.env.SES_CONFIGURATION_SET;
   const greeting = recipientName?.trim()
     ? `Merhaba ${recipientName.trim()},`
     : "Merhaba,";
@@ -151,8 +152,16 @@ export async function sendCampaignEmail({
     headers: {
       "List-Unsubscribe": `<${unsubscribeUrl}>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      ...(configurationSet
+        ? { "X-SES-CONFIGURATION-SET": configurationSet }
+        : {}),
     },
   });
 
-  return result.messageId;
+  const responseText = String(result.response || "");
+  const sesMessageId = responseText.match(/\b([A-Za-z0-9-]{40,})\s*$/)?.[1] || null;
+  return {
+    rfcMessageId: result.messageId,
+    sesMessageId,
+  };
 }

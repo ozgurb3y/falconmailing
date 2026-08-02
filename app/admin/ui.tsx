@@ -95,9 +95,15 @@ type DeliveryStats = {
   status: string;
   requested: number;
   sent: number;
+  delivered: number;
+  bounced: number;
+  complained: number;
+  delayed: number;
+  rejected: number;
   failed: number;
   skipped: number;
   monthlySent: number;
+  monthlyDelivered: number;
   updatedAt: string | null;
 };
 
@@ -107,9 +113,15 @@ const emptyDeliveryStats: DeliveryStats = {
   status: "idle",
   requested: 0,
   sent: 0,
+  delivered: 0,
+  bounced: 0,
+  complained: 0,
+  delayed: 0,
+  rejected: 0,
   failed: 0,
   skipped: 0,
   monthlySent: 0,
+  monthlyDelivered: 0,
   updatedAt: null,
 };
 
@@ -206,13 +218,32 @@ export function DeliveryMonitor() {
           <strong>{stats.requested.toLocaleString("tr-TR")}</strong>
         </div>
         <div>
-          <span>Gönderilen</span>
+          <span>SES kabul etti</span>
           <strong>{stats.sent.toLocaleString("tr-TR")}</strong>
+        </div>
+        <div>
+          <span>Teslim edildi</span>
+          <strong>{stats.delivered.toLocaleString("tr-TR")}</strong>
+        </div>
+        <div>
+          <span>Bounce / reddedildi</span>
+          <strong>
+            {(stats.bounced + stats.rejected).toLocaleString("tr-TR")}
+          </strong>
+        </div>
+        <div>
+          <span>Şikâyet / gecikme</span>
+          <strong>
+            {(stats.complained + stats.delayed).toLocaleString("tr-TR")}
+          </strong>
         </div>
       </div>
       <div className="monthly-delivery">
-        <span>Bu ay toplam gönderilen mail</span>
-        <strong>{stats.monthlySent.toLocaleString("tr-TR")}</strong>
+        <span>Bu ay SES kabul / doğrulanan teslim</span>
+        <strong>
+          {stats.monthlySent.toLocaleString("tr-TR")} /{" "}
+          {stats.monthlyDelivered.toLocaleString("tr-TR")}
+        </strong>
       </div>
       {error ? <p className="admin-error">{error}</p> : null}
     </section>

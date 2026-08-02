@@ -2,6 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { sendCampaignEmail } from "@/lib/campaign-mail";
 import { db } from "@/lib/db";
 import { createToken, hashToken } from "@/lib/security";
+import { reconcileSesMessage } from "@/lib/ses-events";
 
 const DEFAULT_BATCH_SIZE = 40;
 const DEFAULT_BATCHES_PER_INVOCATION = 3;
@@ -183,7 +184,7 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
         ${campaign.id}, NOW()
       )
     `;
-    const messageId = await sendCampaignEmail({
+    const message = await sendCampaignEmail({
       to: recipient.email,
       recipientName: recipient.name,
       subject: campaign.subject,
@@ -199,10 +200,17 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
     });
     await sql`
       UPDATE campaign_recipients
-      SET status = 'sent', sent_at = NOW(), ses_message_id = ${messageId},
+      SET status = 'sent', sent_at = NOW(),
+          rfc_message_id = ${message.rfcMessageId},
+          ses_message_id = ${message.sesMessageId},
+          delivery_status = 'accepted',
+          last_delivery_event_at = NOW(),
           error_message = NULL, updated_at = NOW()
       WHERE id = ${recipient.id} AND status = 'processing'
     `;
+    if (message.sesMessageId) {
+      await reconcileSesMessage(message.sesMessageId);
+    }
   } catch (error) {
     const retry = transientDeliveryError(error) && recipient.attempt_count < 3;
     await sql`

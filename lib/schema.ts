@@ -196,6 +196,34 @@ const statements = [
     WHERE internal_recipient_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
     ON campaign_recipients (campaign_id, status)`,
+  `ALTER TABLE campaign_recipients
+    ADD COLUMN IF NOT EXISTS rfc_message_id TEXT`,
+  `ALTER TABLE campaign_recipients
+    ADD COLUMN IF NOT EXISTS delivery_status TEXT NOT NULL DEFAULT 'unknown'
+      CHECK (delivery_status IN (
+        'unknown', 'accepted', 'delivered', 'delayed', 'bounced',
+        'complained', 'rejected', 'rendering_failed'
+      ))`,
+  `ALTER TABLE campaign_recipients
+    ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ`,
+  `ALTER TABLE campaign_recipients
+    ADD COLUMN IF NOT EXISTS last_delivery_event_at TIMESTAMPTZ`,
+  `ALTER TABLE campaign_recipients
+    ADD COLUMN IF NOT EXISTS delivery_event_detail JSONB`,
+  `CREATE INDEX IF NOT EXISTS campaign_recipients_ses_message_idx
+    ON campaign_recipients (ses_message_id)
+    WHERE ses_message_id IS NOT NULL`,
+  `CREATE TABLE IF NOT EXISTS ses_delivery_events (
+    sns_message_id TEXT PRIMARY KEY,
+    ses_message_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_at TIMESTAMPTZ NOT NULL,
+    recipient_emails JSONB NOT NULL DEFAULT '[]'::jsonb,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS ses_delivery_events_message_idx
+    ON ses_delivery_events (ses_message_id, event_at DESC)`,
   `CREATE INDEX IF NOT EXISTS campaigns_stalled_worker_idx
     ON campaigns (worker_lease_until)
     WHERE status = 'sending'`,
