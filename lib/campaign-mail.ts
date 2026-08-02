@@ -84,7 +84,8 @@ export async function sendCampaignEmail({
   const fromAddress =
     process.env.MAIL_FROM_ADDRESS || "duyuru@send.falconmailing.com";
   const fromName = process.env.MAIL_FROM_NAME || "FalconMailing";
-  const configurationSet = process.env.SES_CONFIGURATION_SET;
+  const configurationSet =
+    process.env.SES_CONFIGURATION_SET || "falconmailing-events";
   const greeting = recipientName?.trim()
     ? `Merhaba ${recipientName.trim()},`
     : "Merhaba,";
