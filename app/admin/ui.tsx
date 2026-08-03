@@ -141,6 +141,30 @@ function deliveryStatusLabel(status: string) {
 export function DeliveryMonitor() {
   const [stats, setStats] = useState<DeliveryStats>(emptyDeliveryStats);
   const [error, setError] = useState("");
+  const [workflowHealth, setWorkflowHealth] = useState<
+    "checking" | "healthy" | "unhealthy"
+  >("checking");
+
+  useEffect(() => {
+    let mounted = true;
+    async function checkWorkflowHealth() {
+      try {
+        const response = await fetch("/api/admin/workflow-health", {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as { healthy?: boolean };
+        if (mounted) {
+          setWorkflowHealth(response.ok && result.healthy ? "healthy" : "unhealthy");
+        }
+      } catch {
+        if (mounted) setWorkflowHealth("unhealthy");
+      }
+    }
+    void checkWorkflowHealth();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -202,6 +226,13 @@ export function DeliveryMonitor() {
         </span>
       </div>
       {stats.subject ? <p className="delivery-subject">{stats.subject}</p> : null}
+      <p className={workflowHealth === "unhealthy" ? "admin-error" : "admin-success"}>
+        {workflowHealth === "checking"
+          ? "Arka plan gönderim altyapısı kontrol ediliyor…"
+          : workflowHealth === "healthy"
+            ? "Arka plan gönderimi hazır · Sayfa kapansa da devam eder."
+            : "Arka plan gönderim altyapısı şu anda doğrulanamadı."}
+      </p>
       <div
         className="progress-track"
         role="progressbar"
