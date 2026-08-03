@@ -566,6 +566,19 @@
   margin: 24px 0 0;
 }
 
+.incomplete-recipients { margin-top: 24px; }
+.incomplete-recipients h3 { margin: 0 0 12px; }
+.recipient-table-wrap { overflow-x: auto; }
+.recipient-table-wrap table { width: 100%; border-collapse: collapse; }
+.recipient-table-wrap th,
+.recipient-table-wrap td {
+  border-bottom: 1px solid #29292e;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.recipient-table-wrap th { color: var(--admin-slate); font-size: 0.75rem; }
+
 .email-preview h2 {
   margin: 0 0 20px;
   max-width: 720px;

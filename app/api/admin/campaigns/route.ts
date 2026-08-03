@@ -135,7 +135,10 @@ export async function POST(request: Request) {
           },
         ]),
       ).values(),
-    );
+    ).map((recipient, index) => ({
+      ...recipient,
+      sendOrder: index + 1,
+    }));
     await sql`
       INSERT INTO campaigns (
         id, name, subject, preview_text, heading, content,
@@ -157,7 +160,8 @@ export async function POST(request: Request) {
           id AS contact_id,
           NULL::uuid AS internal_recipient_id,
           email,
-          name
+          name,
+          ROW_NUMBER() OVER (ORDER BY lower(email))::int AS send_order
         FROM marketing_eligible_contacts
         WHERE ${value.audienceType} = 'marketing'
         UNION ALL
@@ -165,20 +169,16 @@ export async function POST(request: Request) {
           NULL::uuid AS contact_id,
           NULL::uuid AS internal_recipient_id,
           lower(trim(input.email)) AS email,
-          nullif(trim(input.name), '') AS name
+          nullif(trim(input.name), '') AS name,
+          input."sendOrder" AS send_order
         FROM jsonb_to_recordset(${JSON.stringify(internalRecipients)}::jsonb)
-          AS input(email TEXT, name TEXT)
+          AS input(email TEXT, name TEXT, "sendOrder" INTEGER)
         WHERE ${value.audienceType} = 'internal'
-          AND NOT EXISTS (
-            SELECT 1
-            FROM email_suppressions blocked
-            WHERE lower(blocked.email) = lower(trim(input.email))
-          )
       ),
       recipients AS (
         INSERT INTO campaign_recipients (
           id, campaign_id, contact_id, internal_recipient_id,
-          email, name, status, created_at, updated_at
+          email, name, send_order, status, created_at, updated_at
         )
         SELECT
           gen_random_uuid(),
@@ -187,6 +187,7 @@ export async function POST(request: Request) {
           internal_recipient_id,
           email,
           name,
+          send_order,
           'queued',
           NOW(),
           NOW()

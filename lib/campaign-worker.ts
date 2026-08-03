@@ -13,6 +13,7 @@ type Recipient = {
   internal_recipient_id: string | null;
   email: string;
   name: string | null;
+  send_order: number;
   attempt_count: number;
 };
 
@@ -251,7 +252,7 @@ async function processCampaignBatch(campaignId: string, token: string) {
     WITH selected AS (
       SELECT id FROM campaign_recipients
       WHERE campaign_id = ${campaignId} AND status = 'queued'
-      ORDER BY created_at
+      ORDER BY send_order
       LIMIT ${batchSize}
       FOR UPDATE SKIP LOCKED
     )
@@ -261,20 +262,20 @@ async function processCampaignBatch(campaignId: string, token: string) {
     FROM selected
     WHERE r.id = selected.id
     RETURNING r.id, r.contact_id, r.internal_recipient_id, r.email, r.name,
-              r.attempt_count
+              r.send_order, r.attempt_count
   `;
 
-  const deliveries = await Promise.allSettled(
-    (claimedRows as Recipient[]).map((recipient) =>
-      processRecipient(campaign, recipient),
-    ),
+  const recipients = (claimedRows as Recipient[]).sort(
+    (left, right) => left.send_order - right.send_order,
   );
-  for (const delivery of deliveries) {
-    if (delivery.status === "rejected") {
+  for (const recipient of recipients) {
+    try {
+      await processRecipient(campaign, recipient);
+    } catch (error) {
       console.error("Campaign recipient processing failed", {
         campaignId,
-        message:
-          delivery.reason instanceof Error ? delivery.reason.message : "unknown",
+        recipient: recipient.email,
+        message: error instanceof Error ? error.message : "unknown",
       });
     }
   }

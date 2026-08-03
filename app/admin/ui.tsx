@@ -314,11 +314,9 @@ export function CampaignCreateForm() {
       form.reset();
       setHtmlContent("");
       setRecipientLineCount(0);
-      setMessage(
-        delivery.status === "completed"
-          ? "Gönderim tamamlandı."
-          : "Gönderim arka planda başlatıldı. Bu sayfayı kapatabilirsiniz.",
-      );
+      router.push(`/admin/campaigns/${result.id}`);
+      router.refresh();
+      return;
     } catch (sendError) {
       setMessage(
         sendError instanceof Error
@@ -396,6 +394,16 @@ type DeliveryState = {
   failed_count: number;
   skipped_count: number;
   remaining: number;
+  incomplete_count?: number;
+  incompleteRecipients?: IncompleteRecipient[];
+};
+
+type IncompleteRecipient = {
+  send_order: number;
+  email: string;
+  status: string;
+  delivery_status: string;
+  error_message: string | null;
 };
 
 export function CampaignSender({
@@ -409,6 +417,27 @@ export function CampaignSender({
   const [state, setState] = useState(initial);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    let timer: number | undefined;
+    async function refresh() {
+      try {
+        const response = await fetch(`/api/admin/campaigns/${campaignId}/send`, {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as DeliveryState;
+        if (response.ok && mounted) setState(result);
+      } finally {
+        if (mounted) timer = window.setTimeout(() => void refresh(), 5_000);
+      }
+    }
+    void refresh();
+    return () => {
+      mounted = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [campaignId]);
 
   async function action(actionName: "send" | "pause" | "resume" | "cancel") {
     const response = await fetch(
@@ -501,6 +530,31 @@ export function CampaignSender({
         ) : null}
       </div>
       {message ? <p className="admin-error">{message}</p> : null}
+      {Number(state.incomplete_count || 0) > 0 ? (
+        <div className="incomplete-recipients">
+          <h3>Eksik veya sorunlu gönderimler ({state.incomplete_count})</h3>
+          <div className="recipient-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Sıra</th><th>E-posta</th><th>Durum</th><th>Açıklama</th></tr>
+              </thead>
+              <tbody>
+                {(state.incompleteRecipients || []).map((recipient) => (
+                  <tr key={`${recipient.send_order}-${recipient.email}`}>
+                    <td>{recipient.send_order}</td>
+                    <td>{recipient.email}</td>
+                    <td>{recipient.status} / {recipient.delivery_status}</td>
+                    <td>{recipient.error_message || "Teslimat sorunu bildirildi."}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {Number(state.incomplete_count) > (state.incompleteRecipients || []).length ? (
+            <p className="send-hint">İlk 200 kayıt gösteriliyor.</p>
+          ) : null}
+        </div>
+      ) : null}
       <p className="send-hint">
         Gönderim güvenli gruplar halinde sunucuda ilerler. Sayfayı kapatmanız,
         oturumun sona ermesi veya bilgisayarın kapanması kampanyayı durdurmaz.

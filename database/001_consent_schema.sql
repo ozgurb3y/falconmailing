@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS campaign_recipients (
   internal_recipient_id UUID REFERENCES internal_recipients(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT,
+  send_order INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'queued'
     CHECK (status IN ('queued', 'processing', 'sent', 'failed', 'skipped')),
   attempt_count INTEGER NOT NULL DEFAULT 0,
@@ -218,6 +219,27 @@ CREATE TABLE IF NOT EXISTS campaign_recipients (
 
 CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_status_idx
   ON campaign_recipients (campaign_id, status);
+
+ALTER TABLE campaign_recipients
+  ADD COLUMN IF NOT EXISTS send_order INTEGER;
+
+WITH ranked AS (
+  SELECT id, ROW_NUMBER() OVER (
+    PARTITION BY campaign_id ORDER BY created_at, id
+  )::int AS position
+  FROM campaign_recipients
+  WHERE send_order IS NULL
+)
+UPDATE campaign_recipients recipients
+SET send_order = ranked.position
+FROM ranked
+WHERE recipients.id = ranked.id;
+
+ALTER TABLE campaign_recipients
+  ALTER COLUMN send_order SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_order_idx
+  ON campaign_recipients (campaign_id, send_order);
 
 ALTER TABLE campaign_recipients
   ALTER COLUMN contact_id DROP NOT NULL;
