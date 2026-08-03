@@ -14,8 +14,10 @@ import {
 
 export const runtime = "nodejs";
 
+const emailAddressSchema = z.string().trim().email().max(254);
+
 const recipientSchema = z.object({
-  email: z.string().trim().email().max(254),
+  email: z.string().trim().min(1).max(10_000),
   name: z.string().trim().max(100).optional().nullable(),
 });
 
@@ -78,7 +80,7 @@ const campaignSchema = z
       context.addIssue({
         code: "custom",
         path: ["internalRecipients"],
-        message: "En az bir geçerli e-posta adresi girilmelidir.",
+        message: "En az bir e-posta kaydı girilmelidir.",
       });
     }
     if (value.audienceType === "internal" && !value.internalAuthorized) {
@@ -97,17 +99,10 @@ export async function POST(request: Request) {
     }
     const parsed = campaignSchema.safeParse(await request.json());
     if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      const recipientIndex =
-        issue?.path[0] === "internalRecipients" &&
-        typeof issue.path[1] === "number"
-          ? issue.path[1]
-          : null;
-      const message =
-        recipientIndex !== null && issue?.path[2] === "email"
-          ? `${recipientIndex + 1}. sıradaki e-posta adresi geçersiz.`
-          : issue?.message || "Alanları kontrol edin.";
-      return NextResponse.json({ message }, { status: 400 });
+      return NextResponse.json(
+        { message: parsed.error.issues[0]?.message || "Alanları kontrol edin." },
+        { status: 400 },
+      );
     }
 
     await ensureDatabaseSchema();
@@ -136,15 +131,13 @@ export async function POST(request: Request) {
       new Map(
         value.internalRecipients.map((recipient) => [
           recipient.email.toLowerCase(),
-          {
-            email: recipient.email.toLowerCase(),
-            name: recipient.name || null,
-          },
+          { email: recipient.email, name: recipient.name || null },
         ]),
       ).values(),
     ).map((recipient, index) => ({
       ...recipient,
       sendOrder: index + 1,
+      isValid: emailAddressSchema.safeParse(recipient.email).success,
     }));
     await sql`
       INSERT INTO campaigns (
@@ -168,7 +161,9 @@ export async function POST(request: Request) {
           NULL::uuid AS internal_recipient_id,
           email,
           name,
-          ROW_NUMBER() OVER (ORDER BY lower(email))::int AS send_order
+          ROW_NUMBER() OVER (ORDER BY lower(email))::int AS send_order,
+          'queued'::text AS initial_status,
+          NULL::text AS initial_error_message
         FROM marketing_eligible_contacts
         WHERE ${value.audienceType} = 'marketing'
         UNION ALL
@@ -177,15 +172,20 @@ export async function POST(request: Request) {
           NULL::uuid AS internal_recipient_id,
           lower(trim(input.email)) AS email,
           nullif(trim(input.name), '') AS name,
-          input."sendOrder" AS send_order
+          input."sendOrder" AS send_order,
+          CASE WHEN input."isValid" THEN 'queued' ELSE 'failed' END AS initial_status,
+          CASE
+            WHEN input."isValid" THEN NULL
+            ELSE 'Geçersiz e-posta adresi; gönderim yapılmadı.'
+          END AS initial_error_message
         FROM jsonb_to_recordset(${JSON.stringify(internalRecipients)}::jsonb)
-          AS input(email TEXT, name TEXT, "sendOrder" INTEGER)
+          AS input(email TEXT, name TEXT, "sendOrder" INTEGER, "isValid" BOOLEAN)
         WHERE ${value.audienceType} = 'internal'
       ),
       recipients AS (
         INSERT INTO campaign_recipients (
           id, campaign_id, contact_id, internal_recipient_id,
-          email, name, send_order, status, created_at, updated_at
+          email, name, send_order, status, error_message, created_at, updated_at
         )
         SELECT
           gen_random_uuid(),
@@ -195,14 +195,18 @@ export async function POST(request: Request) {
           email,
           name,
           send_order,
-          'queued',
+          initial_status,
+          initial_error_message,
           NOW(),
           NOW()
         FROM source_recipients
-        RETURNING id
+        RETURNING id, status
       )
       UPDATE campaigns
       SET audience_count = (SELECT COUNT(*) FROM recipients),
+          failed_count = (
+            SELECT COUNT(*) FROM recipients WHERE status = 'failed'
+          ),
           updated_at = NOW()
       WHERE id = ${campaignId}
       RETURNING id, audience_count

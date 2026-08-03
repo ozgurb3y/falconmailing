@@ -63,53 +63,32 @@ export function AdminLogoutButton() {
 }
 
 type InternalRecipient = { email: string; name: string | null };
-type InvalidRecipient = { lineNumber: number; value: string };
 
-function looksLikeEmail(value: string) {
-  return /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/u.test(value);
-}
-
-function parseRecipientToken(token: string): InternalRecipient | null {
+function parseRecipientToken(token: string): InternalRecipient {
   const angled = token.match(/^(.+?)\s*<([^>]+)>$/);
   if (angled) {
     const email = angled[2].trim();
-    return looksLikeEmail(email)
-      ? { name: angled[1].trim() || null, email }
-      : null;
+    return { name: angled[1].trim() || null, email };
   }
 
-  const [emailValue, ...nameParts] = token.split(",");
-  const email = emailValue.trim();
-  return looksLikeEmail(email)
-    ? { email, name: nameParts.join(",").trim() || null }
-    : null;
+  return { email: token.trim(), name: null };
 }
 
 function parseInternalRecipients(value: string) {
   const recipients: InternalRecipient[] = [];
-  const invalidRecipients: InvalidRecipient[] = [];
 
-  value.split(/\r?\n/).forEach((rawLine, lineIndex) => {
+  value.split(/\r?\n/).forEach((rawLine) => {
     const line = rawLine.trim().replace(/[;,]\s*$/, "");
     if (!line) return;
 
-    let tokens = [line];
-    if (line.includes(";")) {
-      tokens = line.split(";").map((token) => token.trim()).filter(Boolean);
-    } else {
-      const commaTokens = line.split(",").map((token) => token.trim()).filter(Boolean);
-      if (commaTokens.length > 1 && commaTokens.every(looksLikeEmail)) {
-        tokens = commaTokens;
-      }
-    }
+    const angleCount = (line.match(/</g) || []).length;
+    const tokens = angleCount === 1 && /^(.+?)\s*<([^>]+)>$/.test(line)
+      ? [line]
+      : line.split(/[;,]/).map((token) => token.trim()).filter(Boolean);
 
     tokens.forEach((token) => {
       const recipient = parseRecipientToken(token);
-      if (recipient) {
-        recipients.push(recipient);
-      } else {
-        invalidRecipients.push({ lineNumber: lineIndex + 1, value: token });
-      }
+      if (recipient.email) recipients.push(recipient);
     });
   });
 
@@ -119,7 +98,6 @@ function parseInternalRecipients(value: string) {
         recipients.map((recipient) => [recipient.email.toLowerCase(), recipient]),
       ).values(),
     ),
-    invalidRecipients,
   };
 }
 
@@ -331,21 +309,9 @@ export function CampaignCreateForm() {
     const parsedRecipients = parseInternalRecipients(
       String(data.get("internalRecipients") || ""),
     );
-    if (parsedRecipients.invalidRecipients.length > 0) {
-      const shown = parsedRecipients.invalidRecipients
-        .slice(0, 5)
-        .map(({ lineNumber, value }) => `${lineNumber}. satır (${value})`)
-        .join(", ");
-      const remaining = parsedRecipients.invalidRecipients.length - 5;
-      setMessage(
-        `Geçersiz e-posta adresi: ${shown}${remaining > 0 ? ` ve ${remaining} kayıt daha` : ""}.`,
-      );
-      setLoading(false);
-      return;
-    }
     const internalRecipients = parsedRecipients.recipients;
     if (internalRecipients.length === 0) {
-      setMessage("En az bir geçerli e-posta adresi girin.");
+      setMessage("En az bir e-posta kaydı girin.");
       setLoading(false);
       return;
     }
@@ -433,6 +399,7 @@ export function CampaignCreateForm() {
           <small>
             Her satıra bir adres yazın. Virgül veya noktalı virgülle ayrılmış
             adresler ile Ad Soyad &lt;mail@adres.com&gt; biçimi de kabul edilir.
+            Hatalı adresler gönderimi durdurmaz; başarısız olarak işaretlenir.
           </small>
         </label>
       </div>
