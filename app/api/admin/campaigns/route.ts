@@ -97,10 +97,17 @@ export async function POST(request: Request) {
     }
     const parsed = campaignSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json(
-        { message: parsed.error.issues[0]?.message || "Alanları kontrol edin." },
-        { status: 400 },
-      );
+      const issue = parsed.error.issues[0];
+      const recipientIndex =
+        issue?.path[0] === "internalRecipients" &&
+        typeof issue.path[1] === "number"
+          ? issue.path[1]
+          : null;
+      const message =
+        recipientIndex !== null && issue?.path[2] === "email"
+          ? `${recipientIndex + 1}. sıradaki e-posta adresi geçersiz.`
+          : issue?.message || "Alanları kontrol edin.";
+      return NextResponse.json({ message }, { status: 400 });
     }
 
     await ensureDatabaseSchema();

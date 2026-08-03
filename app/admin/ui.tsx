@@ -62,31 +62,65 @@ export function AdminLogoutButton() {
   );
 }
 
-function parseInternalRecipients(value: string) {
-  const recipients = value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const angled = line.match(/^(.+?)\s*<([^>]+)>$/);
-      if (angled) {
-        return { name: angled[1].trim(), email: angled[2].trim() };
-      }
-      const [email, ...nameParts] = line.split(",");
-      return {
-        email: email.trim(),
-        name: nameParts.join(",").trim() || null,
-      };
-    });
+type InternalRecipient = { email: string; name: string | null };
+type InvalidRecipient = { lineNumber: number; value: string };
 
-  return Array.from(
-    new Map(
-      recipients.map((recipient) => [
-        recipient.email.toLowerCase(),
-        recipient,
-      ]),
-    ).values(),
-  );
+function looksLikeEmail(value: string) {
+  return /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/u.test(value);
+}
+
+function parseRecipientToken(token: string): InternalRecipient | null {
+  const angled = token.match(/^(.+?)\s*<([^>]+)>$/);
+  if (angled) {
+    const email = angled[2].trim();
+    return looksLikeEmail(email)
+      ? { name: angled[1].trim() || null, email }
+      : null;
+  }
+
+  const [emailValue, ...nameParts] = token.split(",");
+  const email = emailValue.trim();
+  return looksLikeEmail(email)
+    ? { email, name: nameParts.join(",").trim() || null }
+    : null;
+}
+
+function parseInternalRecipients(value: string) {
+  const recipients: InternalRecipient[] = [];
+  const invalidRecipients: InvalidRecipient[] = [];
+
+  value.split(/\r?\n/).forEach((rawLine, lineIndex) => {
+    const line = rawLine.trim().replace(/[;,]\s*$/, "");
+    if (!line) return;
+
+    let tokens = [line];
+    if (line.includes(";")) {
+      tokens = line.split(";").map((token) => token.trim()).filter(Boolean);
+    } else {
+      const commaTokens = line.split(",").map((token) => token.trim()).filter(Boolean);
+      if (commaTokens.length > 1 && commaTokens.every(looksLikeEmail)) {
+        tokens = commaTokens;
+      }
+    }
+
+    tokens.forEach((token) => {
+      const recipient = parseRecipientToken(token);
+      if (recipient) {
+        recipients.push(recipient);
+      } else {
+        invalidRecipients.push({ lineNumber: lineIndex + 1, value: token });
+      }
+    });
+  });
+
+  return {
+    recipients: Array.from(
+      new Map(
+        recipients.map((recipient) => [recipient.email.toLowerCase(), recipient]),
+      ).values(),
+    ),
+    invalidRecipients,
+  };
 }
 
 type DeliveryStats = {
@@ -294,9 +328,27 @@ export function CampaignCreateForm() {
     setMessage("");
     const form = event.currentTarget;
     const data = new FormData(form);
-    const internalRecipients = parseInternalRecipients(
+    const parsedRecipients = parseInternalRecipients(
       String(data.get("internalRecipients") || ""),
     );
+    if (parsedRecipients.invalidRecipients.length > 0) {
+      const shown = parsedRecipients.invalidRecipients
+        .slice(0, 5)
+        .map(({ lineNumber, value }) => `${lineNumber}. satır (${value})`)
+        .join(", ");
+      const remaining = parsedRecipients.invalidRecipients.length - 5;
+      setMessage(
+        `Geçersiz e-posta adresi: ${shown}${remaining > 0 ? ` ve ${remaining} kayıt daha` : ""}.`,
+      );
+      setLoading(false);
+      return;
+    }
+    const internalRecipients = parsedRecipients.recipients;
+    if (internalRecipients.length === 0) {
+      setMessage("En az bir geçerli e-posta adresi girin.");
+      setLoading(false);
+      return;
+    }
     const subject = String(data.get("subject") || "");
     const response = await fetch("/api/admin/campaigns", {
       method: "POST",
@@ -374,12 +426,14 @@ export function CampaignCreateForm() {
             rows={9}
             onChange={(event) =>
               setRecipientLineCount(
-                event.target.value
-                  .split(/\r?\n/)
-                  .filter((line) => line.trim().length > 0).length,
+                parseInternalRecipients(event.target.value).recipients.length,
               )
             }
           />
+          <small>
+            Her satıra bir adres yazın. Virgül veya noktalı virgülle ayrılmış
+            adresler ile Ad Soyad &lt;mail@adres.com&gt; biçimi de kabul edilir.
+          </small>
         </label>
       </div>
       <label>
