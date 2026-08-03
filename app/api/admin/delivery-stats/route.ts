@@ -1,8 +1,9 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { claimCampaignWorker, runCampaignWorker } from "@/lib/campaign-worker";
+import { claimCampaignWorker } from "@/lib/campaign-worker";
 import { db } from "@/lib/db";
 import { ensureDatabaseSchema } from "@/lib/schema";
+import { startCampaignDelivery } from "@/lib/start-campaign-workflow";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,16 +74,7 @@ export async function GET() {
     if (row?.id && row.status === "sending") {
       const token = await claimCampaignWorker(String(row.id));
       if (token) {
-        after(async () => {
-          try {
-            await runCampaignWorker(String(row.id), token);
-          } catch (error) {
-            console.error("Campaign recovery worker failed", {
-              campaignId: String(row.id),
-              message: error instanceof Error ? error.message : "unknown",
-            });
-          }
-        });
+        await startCampaignDelivery(String(row.id), token);
       }
     }
     const requested = Number(row?.requested || 0);

@@ -225,7 +225,7 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
   }
 }
 
-async function processCampaignBatch(campaignId: string, token: string) {
+export async function processCampaignBatch(campaignId: string, token: string) {
   const sql = db();
   const campaignRows = await sql`
     UPDATE campaigns

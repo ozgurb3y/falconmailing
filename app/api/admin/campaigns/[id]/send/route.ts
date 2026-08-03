@@ -1,13 +1,13 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminAuthenticated, isSameOrigin } from "@/lib/admin-auth";
 import {
   claimCampaignWorker,
   refreshCampaignCounts,
-  runCampaignWorker,
 } from "@/lib/campaign-worker";
 import { db } from "@/lib/db";
 import { ensureDatabaseSchema } from "@/lib/schema";
+import { startCampaignDelivery } from "@/lib/start-campaign-workflow";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -114,16 +114,7 @@ export async function POST(
       `;
       const token = await claimCampaignWorker(id);
       if (token) {
-        after(async () => {
-          try {
-            await runCampaignWorker(id, token);
-          } catch (error) {
-            console.error("Campaign worker failed", {
-              campaignId: id,
-              message: error instanceof Error ? error.message : "unknown",
-            });
-          }
-        });
+        await startCampaignDelivery(id, token);
       }
     }
 
