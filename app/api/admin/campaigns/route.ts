@@ -13,6 +13,10 @@ import {
 } from "@/lib/campaign-html";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const RECIPIENT_INSERT_CHUNK_SIZE = 5_000;
+const RECIPIENT_INSERT_CONCURRENCY = 4;
 
 const emailAddressSchema = z.string().trim().email().max(254);
 
@@ -154,67 +158,98 @@ export async function POST(request: Request) {
         'admin', NOW(), NOW()
       )
     `;
-    const rows = await sql`
-      WITH source_recipients AS (
-        SELECT
-          id AS contact_id,
-          NULL::uuid AS internal_recipient_id,
-          email,
-          name,
-          ROW_NUMBER() OVER (ORDER BY lower(email))::int AS send_order,
-          'queued'::text AS initial_status,
-          NULL::text AS initial_error_message
-        FROM marketing_eligible_contacts
-        WHERE ${value.audienceType} = 'marketing'
-        UNION ALL
-        SELECT
-          NULL::uuid AS contact_id,
-          NULL::uuid AS internal_recipient_id,
-          lower(trim(input.email)) AS email,
-          nullif(trim(input.name), '') AS name,
-          input."sendOrder" AS send_order,
-          CASE WHEN input."isValid" THEN 'queued' ELSE 'failed' END AS initial_status,
-          CASE
-            WHEN input."isValid" THEN NULL
-            ELSE 'Geçersiz e-posta adresi; gönderim yapılmadı.'
-          END AS initial_error_message
-        FROM jsonb_to_recordset(${JSON.stringify(internalRecipients)}::jsonb)
-          AS input(email TEXT, name TEXT, "sendOrder" INTEGER, "isValid" BOOLEAN)
-        WHERE ${value.audienceType} = 'internal'
-      ),
-      recipients AS (
-        INSERT INTO campaign_recipients (
-          id, campaign_id, contact_id, internal_recipient_id,
-          email, name, send_order, status, error_message, created_at, updated_at
-        )
-        SELECT
-          gen_random_uuid(),
-          ${campaignId},
-          contact_id,
-          internal_recipient_id,
-          email,
-          name,
-          send_order,
-          initial_status,
-          initial_error_message,
-          NOW(),
-          NOW()
-        FROM source_recipients
-        RETURNING id, status
-      )
-      UPDATE campaigns
-      SET audience_count = (SELECT COUNT(*) FROM recipients),
-          failed_count = (
-            SELECT COUNT(*) FROM recipients WHERE status = 'failed'
-          ),
-          updated_at = NOW()
-      WHERE id = ${campaignId}
-      RETURNING id, audience_count
-    `;
+    let audienceCount = 0;
+    let failedCount = 0;
+    try {
+      if (value.audienceType === "marketing") {
+        const inserted = await sql`
+          INSERT INTO campaign_recipients (
+            id, campaign_id, contact_id, internal_recipient_id,
+            email, name, send_order, status, created_at, updated_at
+          )
+          SELECT
+            gen_random_uuid(), ${campaignId}, id, NULL, email, name,
+            ROW_NUMBER() OVER (ORDER BY lower(email))::int,
+            'queued', NOW(), NOW()
+          FROM marketing_eligible_contacts
+          RETURNING status
+        `;
+        audienceCount = inserted.length;
+      } else {
+        for (
+          let groupStart = 0;
+          groupStart < internalRecipients.length;
+          groupStart += RECIPIENT_INSERT_CHUNK_SIZE * RECIPIENT_INSERT_CONCURRENCY
+        ) {
+          const chunks = Array.from(
+            { length: RECIPIENT_INSERT_CONCURRENCY },
+            (_, chunkIndex) => {
+              const start =
+                groupStart + chunkIndex * RECIPIENT_INSERT_CHUNK_SIZE;
+              return internalRecipients.slice(
+                start,
+                start + RECIPIENT_INSERT_CHUNK_SIZE,
+              );
+            },
+          ).filter((chunk) => chunk.length > 0);
+
+          const insertedGroups = await Promise.all(
+            chunks.map((chunk) => sql`
+              INSERT INTO campaign_recipients (
+                id, campaign_id, contact_id, internal_recipient_id,
+                email, name, send_order, status, error_message,
+                created_at, updated_at
+              )
+              SELECT
+                gen_random_uuid(), ${campaignId}, NULL, NULL,
+                lower(trim(input.email)), nullif(trim(input.name), ''),
+                input."sendOrder",
+                CASE WHEN input."isValid" THEN 'queued' ELSE 'failed' END,
+                CASE
+                  WHEN input."isValid" THEN NULL
+                  ELSE 'Geçersiz e-posta adresi; gönderim yapılmadı.'
+                END,
+                NOW(), NOW()
+              FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb)
+                AS input(
+                  email TEXT, name TEXT, "sendOrder" INTEGER, "isValid" BOOLEAN
+                )
+              RETURNING status
+            `),
+          );
+
+          for (const inserted of insertedGroups) {
+            audienceCount += inserted.length;
+            failedCount += inserted.filter(
+              (recipient) => recipient.status === "failed",
+            ).length;
+          }
+        }
+      }
+
+      await sql`
+        UPDATE campaigns
+        SET audience_count = ${audienceCount},
+            failed_count = ${failedCount},
+            updated_at = NOW()
+        WHERE id = ${campaignId}
+      `;
+    } catch (recipientError) {
+      await sql`DELETE FROM campaigns WHERE id = ${campaignId}`.catch(
+        (cleanupError) => {
+          console.error("Incomplete campaign cleanup failed", {
+            campaignId,
+            message:
+              cleanupError instanceof Error ? cleanupError.message : "unknown",
+          });
+        },
+      );
+      throw recipientError;
+    }
 
     return NextResponse.json({
       id: campaignId,
-      audienceCount: Number(rows[0]?.audience_count || 0),
+      audienceCount,
     });
   } catch (error) {
     console.error("Campaign creation failed", {

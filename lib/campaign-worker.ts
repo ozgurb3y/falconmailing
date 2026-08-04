@@ -277,6 +277,15 @@ export async function processCampaignBatch(campaignId: string, token: string) {
         recipient: recipient.email,
         message: error instanceof Error ? error.message : "unknown",
       });
+      const retry = recipient.attempt_count < 3;
+      await sql`
+        UPDATE campaign_recipients
+        SET status = ${retry ? "queued" : "failed"},
+            claimed_at = NULL,
+            error_message = ${deliveryErrorMessage(error)},
+            updated_at = NOW()
+        WHERE id = ${recipient.id} AND status = 'processing'
+      `;
     }
   }
   const counts = await refreshCampaignCounts(campaignId);

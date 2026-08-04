@@ -17,33 +17,8 @@ const actionSchema = z.object({
 });
 
 async function campaignState(id: string) {
-  const sql = db();
   const counts = await refreshCampaignCounts(id);
-  const issueCounts = await sql`
-    SELECT COUNT(*)::int AS count
-    FROM campaign_recipients
-    WHERE campaign_id = ${id}
-      AND (
-        status IN ('failed', 'skipped')
-        OR delivery_status IN ('bounced', 'complained', 'rejected', 'rendering_failed')
-      )
-  `;
-  const incompleteRecipients = await sql`
-    SELECT send_order, email, status, delivery_status, error_message
-    FROM campaign_recipients
-    WHERE campaign_id = ${id}
-      AND (
-        status IN ('failed', 'skipped')
-        OR delivery_status IN ('bounced', 'complained', 'rejected', 'rendering_failed')
-      )
-    ORDER BY send_order
-    LIMIT 200
-  `;
-  return {
-    ...counts,
-    incomplete_count: Number(issueCounts[0]?.count || 0),
-    incompleteRecipients,
-  };
+  return counts;
 }
 
 export async function GET(

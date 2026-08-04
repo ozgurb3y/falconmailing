@@ -221,9 +221,17 @@ export function DeliveryMonitor() {
     };
   }, []);
 
+  const failedTotal = stats.failed + stats.skipped;
+  const processing = Math.max(
+    stats.requested - stats.sent - failedTotal,
+    0,
+  );
   const progress =
     stats.requested > 0
-      ? Math.min(100, Math.round((stats.sent / stats.requested) * 100))
+      ? Math.min(
+          100,
+          Math.round(((stats.sent + failedTotal) / stats.requested) * 100),
+        )
       : 0;
 
   return (
@@ -257,36 +265,17 @@ export function DeliveryMonitor() {
       </div>
       <div className="delivery-counts">
         <div>
-          <span>Talep oluşturulan</span>
-          <strong>{stats.requested.toLocaleString("tr-TR")}</strong>
-        </div>
-        <div>
-          <span>SES kabul etti</span>
+          <span>Gönderilen</span>
           <strong>{stats.sent.toLocaleString("tr-TR")}</strong>
         </div>
         <div>
-          <span>Teslim edildi</span>
-          <strong>{stats.delivered.toLocaleString("tr-TR")}</strong>
+          <span>İşlemde olan</span>
+          <strong>{processing.toLocaleString("tr-TR")}</strong>
         </div>
         <div>
-          <span>Bounce / reddedildi</span>
-          <strong>
-            {(stats.bounced + stats.rejected).toLocaleString("tr-TR")}
-          </strong>
+          <span>Başarısız</span>
+          <strong>{failedTotal.toLocaleString("tr-TR")}</strong>
         </div>
-        <div>
-          <span>Şikâyet / gecikme</span>
-          <strong>
-            {(stats.complained + stats.delayed).toLocaleString("tr-TR")}
-          </strong>
-        </div>
-      </div>
-      <div className="monthly-delivery">
-        <span>Bu ay SES kabul / doğrulanan teslim</span>
-        <strong>
-          {stats.monthlySent.toLocaleString("tr-TR")} /{" "}
-          {stats.monthlyDelivered.toLocaleString("tr-TR")}
-        </strong>
       </div>
       {error ? <p className="admin-error">{error}</p> : null}
     </section>
@@ -316,30 +305,42 @@ export function CampaignCreateForm() {
       return;
     }
     const subject = String(data.get("subject") || "");
-    const response = await fetch("/api/admin/campaigns", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: subject,
-        subject,
-        previewText: null,
-        heading: null,
-        content: null,
-        contentMode: "html",
-        htmlContent,
-        audienceType: "internal",
-        internalRecipients,
-        internalAuthorized: true,
-        ctaLabel: null,
-        ctaUrl: null,
-      }),
-    });
-    const result = (await response.json()) as {
-      id?: string;
-      message?: string;
-    };
-    if (!response.ok || !result.id) {
-      setMessage(result.message || "Kampanya oluşturulamadı.");
+    let result: { id?: string; message?: string };
+    try {
+      const response = await fetch("/api/admin/campaigns", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: subject,
+          subject,
+          previewText: null,
+          heading: null,
+          content: null,
+          contentMode: "html",
+          htmlContent,
+          audienceType: "internal",
+          internalRecipients,
+          internalAuthorized: true,
+          ctaLabel: null,
+          ctaUrl: null,
+        }),
+      });
+      result = (await response.json().catch(() => ({}))) as {
+        id?: string;
+        message?: string;
+      };
+      if (!response.ok || !result.id) {
+        setMessage(
+          result.message ||
+            "Kampanya oluşturulamadı. Sunucu yanıtını kontrol edip tekrar deneyin.",
+        );
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setMessage(
+        "Kampanya oluşturma bağlantısı kesildi. Liste korunuyor; tekrar deneyin.",
+      );
       setLoading(false);
       return;
     }
@@ -446,16 +447,6 @@ type DeliveryState = {
   failed_count: number;
   skipped_count: number;
   remaining: number;
-  incomplete_count?: number;
-  incompleteRecipients?: IncompleteRecipient[];
-};
-
-type IncompleteRecipient = {
-  send_order: number;
-  email: string;
-  status: string;
-  delivery_status: string;
-  error_message: string | null;
 };
 
 export function CampaignSender({
@@ -534,6 +525,8 @@ export function CampaignSender({
     Number(state.skipped_count);
   const total = processed + Number(state.remaining);
   const percent = total ? Math.round((processed / total) * 100) : 100;
+  const failedTotal =
+    Number(state.failed_count) + Number(state.skipped_count);
 
   return (
     <section className="send-control">
@@ -542,9 +535,8 @@ export function CampaignSender({
       </div>
       <div className="send-stats">
         <span><strong>{state.sent_count}</strong> gönderildi</span>
-        <span><strong>{state.failed_count}</strong> başarısız</span>
-        <span><strong>{state.skipped_count}</strong> atlandı</span>
-        <span><strong>{state.remaining}</strong> bekliyor</span>
+        <span><strong>{state.remaining}</strong> işlemde olan</span>
+        <span><strong>{failedTotal}</strong> başarısız</span>
       </div>
 
       <div className="send-actions">
@@ -582,31 +574,6 @@ export function CampaignSender({
         ) : null}
       </div>
       {message ? <p className="admin-error">{message}</p> : null}
-      {Number(state.incomplete_count || 0) > 0 ? (
-        <div className="incomplete-recipients">
-          <h3>Eksik veya sorunlu gönderimler ({state.incomplete_count})</h3>
-          <div className="recipient-table-wrap">
-            <table>
-              <thead>
-                <tr><th>Sıra</th><th>E-posta</th><th>Durum</th><th>Açıklama</th></tr>
-              </thead>
-              <tbody>
-                {(state.incompleteRecipients || []).map((recipient) => (
-                  <tr key={`${recipient.send_order}-${recipient.email}`}>
-                    <td>{recipient.send_order}</td>
-                    <td>{recipient.email}</td>
-                    <td>{recipient.status} / {recipient.delivery_status}</td>
-                    <td>{recipient.error_message || "Teslimat sorunu bildirildi."}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {Number(state.incomplete_count) > (state.incompleteRecipients || []).length ? (
-            <p className="send-hint">İlk 200 kayıt gösteriliyor.</p>
-          ) : null}
-        </div>
-      ) : null}
       <p className="send-hint">
         Gönderim güvenli gruplar halinde sunucuda ilerler. Sayfayı kapatmanız,
         oturumun sona ermesi veya bilgisayarın kapanması kampanyayı durdurmaz.
