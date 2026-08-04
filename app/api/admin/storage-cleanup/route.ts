@@ -18,7 +18,11 @@ export async function POST(request: Request) {
   if (!(await isAdminAuthenticated()) || !isSameOrigin(request)) {
     return NextResponse.json({ message: "Yetkisiz istek." }, { status: 403 });
   }
-  const parsed = cleanupSchema.safeParse(await request.json());
+  const contentType = request.headers.get("content-type") || "";
+  const body = contentType.includes("application/json")
+    ? await request.json()
+    : Object.fromEntries(await request.formData());
+  const parsed = cleanupSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ message: "Onay metni geçersiz." }, { status: 400 });
   }
