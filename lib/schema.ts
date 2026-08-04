@@ -242,6 +242,8 @@ const statements = [
   )`,
   `CREATE INDEX IF NOT EXISTS ses_delivery_events_message_idx
     ON ses_delivery_events (ses_message_id, event_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS ses_delivery_events_created_idx
+    ON ses_delivery_events (created_at)`,
   `CREATE INDEX IF NOT EXISTS campaigns_stalled_worker_idx
     ON campaigns (worker_lease_until)
     WHERE status = 'sending'`,
