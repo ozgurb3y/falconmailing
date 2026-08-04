@@ -116,6 +116,11 @@ type DeliveryStats = {
   skipped: number;
   monthlySent: number;
   monthlyDelivered: number;
+  quotaMax: number;
+  quotaSent: number;
+  quotaRemaining: number;
+  quotaMaxSendRate: number | null;
+  quotaSource: "aws" | "configured";
   updatedAt: string | null;
 };
 
@@ -134,6 +139,11 @@ const emptyDeliveryStats: DeliveryStats = {
   skipped: 0,
   monthlySent: 0,
   monthlyDelivered: 0,
+  quotaMax: 10_000,
+  quotaSent: 0,
+  quotaRemaining: 10_000,
+  quotaMaxSendRate: null,
+  quotaSource: "configured",
   updatedAt: null,
 };
 
@@ -233,6 +243,10 @@ export function DeliveryMonitor() {
           Math.round(((stats.sent + failedTotal) / stats.requested) * 100),
         )
       : 0;
+  const quotaPercent =
+    stats.quotaMax > 0
+      ? Math.min(100, Math.round((stats.quotaSent / stats.quotaMax) * 100))
+      : 0;
 
   return (
     <section className="delivery-monitor" aria-live="polite">
@@ -276,6 +290,42 @@ export function DeliveryMonitor() {
           <span>Başarısız</span>
           <strong>{failedTotal.toLocaleString("tr-TR")}</strong>
         </div>
+      </div>
+      <div className="ses-quota-card">
+        <div className="ses-quota-heading">
+          <div>
+            <span>SES günlük kota · Son 24 saat</span>
+            <strong>
+              {stats.quotaSent.toLocaleString("tr-TR")} /{" "}
+              {stats.quotaMax < 0
+                ? "Sınırsız"
+                : stats.quotaMax.toLocaleString("tr-TR")}
+            </strong>
+          </div>
+          <div>
+            <span>Kalan gönderim hakkı</span>
+            <strong>
+              {stats.quotaRemaining < 0
+                ? "Sınırsız"
+                : stats.quotaRemaining.toLocaleString("tr-TR")}
+            </strong>
+          </div>
+        </div>
+        <div
+          className="progress-track"
+          role="progressbar"
+          aria-label="SES günlük kota kullanımı"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={quotaPercent}
+        >
+          <span style={{ width: `${quotaPercent}%` }} />
+        </div>
+        <small>
+          {stats.quotaSource === "aws"
+            ? `AWS canlı kota${stats.quotaMaxSendRate ? ` · Saniyede ${stats.quotaMaxSendRate.toLocaleString("tr-TR")} e-posta` : ""}`
+            : "Yapılandırılmış kota · SES_DAILY_QUOTA"}
+        </small>
       </div>
       {error ? <p className="admin-error">{error}</p> : null}
     </section>

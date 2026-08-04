@@ -167,6 +167,38 @@
   margin: 0;
 }
 
+.ses-quota-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 7px;
+  background: #202024;
+}
+
+.ses-quota-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ses-quota-heading span,
+.ses-quota-card small {
+  display: block;
+  color: var(--admin-slate);
+  font-size: 0.75rem;
+}
+
+.ses-quota-heading strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.15rem;
+}
+
+.ses-quota-heading > div:last-child {
+  text-align: right;
+}
+
 .panel-heading {
   display: grid;
   grid-template-columns: 1fr 1fr;

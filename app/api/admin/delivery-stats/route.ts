@@ -3,6 +3,7 @@ import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { claimCampaignWorker } from "@/lib/campaign-worker";
 import { db } from "@/lib/db";
 import { ensureDatabaseSchema } from "@/lib/schema";
+import { getLiveSesQuota } from "@/lib/ses-quota";
 import { startCampaignDelivery } from "@/lib/start-campaign-workflow";
 
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ export async function GET() {
 
     await ensureDatabaseSchema();
     const sql = db();
-    const rows = await sql`
+    const [rows, liveQuota] = await Promise.all([sql`
       WITH latest_campaign AS (
         SELECT
           id,
@@ -38,6 +39,18 @@ export async function GET() {
         FROM campaign_recipients
         WHERE sent_at >= date_trunc('month', NOW())
           AND sent_at < date_trunc('month', NOW()) + INTERVAL '1 month'
+      ),
+      rolling_quota AS (
+        SELECT
+          COUNT(*) FILTER (
+            WHERE status = 'sent' AND sent_at >= NOW() - INTERVAL '24 hours'
+          )::int AS sent_last_24_hours,
+          EXISTS (
+            SELECT 1 FROM campaign_recipients
+            WHERE status = 'queued'
+              AND error_message ILIKE '%Daily message quota exceeded%'
+          ) AS quota_exhausted
+        FROM campaign_recipients
       ),
       latest_delivery AS (
         SELECT
@@ -66,10 +79,12 @@ export async function GET() {
         latest_delivery.rejected::int AS rejected,
         latest_campaign.updated_at,
         monthly_delivery.accepted::int AS monthly_sent,
-        monthly_delivery.delivered::int AS monthly_delivered
-      FROM monthly_delivery, latest_delivery
+        monthly_delivery.delivered::int AS monthly_delivered,
+        rolling_quota.sent_last_24_hours::int,
+        rolling_quota.quota_exhausted
+      FROM monthly_delivery, latest_delivery, rolling_quota
       LEFT JOIN latest_campaign ON TRUE
-    `;
+    `, getLiveSesQuota()]);
     const row = rows[0];
     if (row?.id && row.status === "sending") {
       const token = await claimCampaignWorker(String(row.id));
@@ -79,6 +94,18 @@ export async function GET() {
     }
     const requested = Number(row?.requested || 0);
     const sent = Number(row?.sent || 0);
+    const configuredQuota = Math.max(
+      1,
+      Number(process.env.SES_DAILY_QUOTA || 10_000),
+    );
+    const quotaMax = liveQuota?.max24HourSend ?? configuredQuota;
+    const databaseSentLast24Hours = Number(row?.sent_last_24_hours || 0);
+    const quotaSent = liveQuota?.sentLast24Hours ??
+      (row?.quota_exhausted
+        ? Math.max(databaseSentLast24Hours, quotaMax)
+        : databaseSentLast24Hours);
+    const quotaRemaining =
+      quotaMax < 0 ? -1 : Math.max(0, quotaMax - quotaSent);
     return NextResponse.json(
       {
         campaignId: row?.id || null,
@@ -95,6 +122,11 @@ export async function GET() {
         skipped: Number(row?.skipped || 0),
         monthlySent: Number(row?.monthly_sent || 0),
         monthlyDelivered: Number(row?.monthly_delivered || 0),
+        quotaMax,
+        quotaSent,
+        quotaRemaining,
+        quotaMaxSendRate: liveQuota?.maxSendRate ?? null,
+        quotaSource: liveQuota ? "aws" : "configured",
         updatedAt: row?.updated_at || null,
       },
       {
