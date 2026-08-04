@@ -23,7 +23,7 @@ function transporter() {
     pool: true,
     maxConnections: Math.max(
       1,
-      Math.min(20, Number(process.env.CAMPAIGN_SMTP_CONNECTIONS || 14)),
+      Math.min(20, Number(process.env.CAMPAIGN_SMTP_CONNECTIONS || 20)),
     ),
     maxMessages: 500,
     connectionTimeout: 15_000,
