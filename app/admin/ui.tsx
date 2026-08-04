@@ -120,7 +120,7 @@ type DeliveryStats = {
   quotaSent: number;
   quotaRemaining: number;
   quotaMaxSendRate: number | null;
-  quotaSource: "aws" | "configured";
+  quotaSource: "aws" | "configured" | "estimated";
   updatedAt: string | null;
 };
 
@@ -324,7 +324,9 @@ export function DeliveryMonitor() {
         <small>
           {stats.quotaSource === "aws"
             ? `AWS canlı kota${stats.quotaMaxSendRate ? ` · Saniyede ${stats.quotaMaxSendRate.toLocaleString("tr-TR")} e-posta` : ""}`
-            : "Yapılandırılmış kota · SES_DAILY_QUOTA"}
+            : stats.quotaSource === "estimated"
+              ? "Tahmini kota · AWS API anahtarı eklendiğinde kesin değer gösterilir"
+              : "Yapılandırılmış kota · SES_DAILY_QUOTA"}
         </small>
       </div>
       {error ? <p className="admin-error">{error}</p> : null}

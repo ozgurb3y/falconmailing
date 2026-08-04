@@ -98,12 +98,10 @@ export async function GET() {
       1,
       Number(process.env.SES_DAILY_QUOTA || 10_000),
     );
-    const quotaMax = liveQuota?.max24HourSend ?? configuredQuota;
     const databaseSentLast24Hours = Number(row?.sent_last_24_hours || 0);
-    const quotaSent = liveQuota?.sentLast24Hours ??
-      (row?.quota_exhausted
-        ? Math.max(databaseSentLast24Hours, quotaMax)
-        : databaseSentLast24Hours);
+    const estimatedQuota = Math.max(configuredQuota, databaseSentLast24Hours);
+    const quotaMax = liveQuota?.max24HourSend ?? estimatedQuota;
+    const quotaSent = liveQuota?.sentLast24Hours ?? databaseSentLast24Hours;
     const quotaRemaining =
       quotaMax < 0 ? -1 : Math.max(0, quotaMax - quotaSent);
     return NextResponse.json(
@@ -126,7 +124,11 @@ export async function GET() {
         quotaSent,
         quotaRemaining,
         quotaMaxSendRate: liveQuota?.maxSendRate ?? null,
-        quotaSource: liveQuota ? "aws" : "configured",
+        quotaSource: liveQuota
+          ? "aws"
+          : databaseSentLast24Hours > configuredQuota || row?.quota_exhausted
+            ? "estimated"
+            : "configured",
         updatedAt: row?.updated_at || null,
       },
       {
