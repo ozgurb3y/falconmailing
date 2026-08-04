@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { createToken, hashToken } from "@/lib/security";
 import { reconcileSesMessage } from "@/lib/ses-events";
 
-const DEFAULT_BATCH_SIZE = 140;
+const DEFAULT_BATCH_SIZE = 560;
 const DEFAULT_BATCHES_PER_INVOCATION = 3;
 const DEFAULT_SEND_RATE_PER_SECOND = 14;
 
@@ -276,7 +276,7 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   const batchSize = positiveInteger(
     process.env.CAMPAIGN_BATCH_SIZE,
     DEFAULT_BATCH_SIZE,
-    280,
+    700,
   );
   const claimedRows = await sql`
     WITH selected AS (
