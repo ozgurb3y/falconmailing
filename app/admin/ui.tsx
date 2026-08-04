@@ -447,6 +447,7 @@ type DeliveryState = {
   failed_count: number;
   skipped_count: number;
   remaining: number;
+  quota_waiting?: boolean;
 };
 
 export function CampaignSender({
@@ -542,14 +543,20 @@ export function CampaignSender({
       <div className="send-actions">
         {state.status === "draft" || state.status === "sending" ? (
           <>
-            <button
-              className="admin-danger"
-              disabled={running || Number(state.remaining) === 0}
-              onClick={run}
-              type="button"
-            >
-              {running ? "Gönderiliyor…" : state.status === "draft" ? "Gönderimi başlat" : "Gönderime devam et"}
-            </button>
+            {state.status === "sending" && state.quota_waiting ? (
+              <span className="admin-success">
+                SES günlük kotası bekleniyor · 15 dakikada bir otomatik denenecek.
+              </span>
+            ) : (
+              <button
+                className="admin-danger"
+                disabled={running || Number(state.remaining) === 0}
+                onClick={run}
+                type="button"
+              >
+                {running ? "Gönderiliyor…" : state.status === "draft" ? "Gönderimi başlat" : "Gönderime devam et"}
+              </button>
+            )}
             {state.status === "sending" ? (
               <button className="admin-ghost" onClick={pause} type="button">
                 Duraklat

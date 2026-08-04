@@ -17,8 +17,21 @@ const actionSchema = z.object({
 });
 
 async function campaignState(id: string) {
+  const sql = db();
   const counts = await refreshCampaignCounts(id);
-  return counts;
+  const quotaRows = await sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM campaign_recipients
+      WHERE campaign_id = ${id}
+        AND status = 'queued'
+        AND error_message ILIKE '%Daily message quota exceeded%'
+    ) AS quota_waiting
+  `;
+  return {
+    ...counts,
+    quota_waiting: Boolean(quotaRows[0]?.quota_waiting),
+  };
 }
 
 export async function GET(
