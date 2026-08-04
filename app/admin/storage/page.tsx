@@ -60,20 +60,12 @@ export default async function StorageDiagnosticsPage() {
             <strong>{formatBytes(databaseBytes)}</strong>
           </div>
           <div>
-            <span>Hata kodu</span>
-            <strong>53100 · disk full</strong>
+            <span>Depolama durumu</span>
+            <strong>
+              {databaseBytes < 450 * 1024 ** 2 ? "Normal" : "Kritik"}
+            </strong>
           </div>
         </div>
-        <form action="/api/admin/storage-cleanup" method="post">
-          <input
-            name="confirmation"
-            type="hidden"
-            value="SES_HAM_OLAYLARINI_TEMIZLE"
-          />
-          <button className="admin-danger" type="submit">
-            Onaylanan ham SES olay arşivini temizle
-          </button>
-        </form>
         <div className="campaign-table-wrap">
           <table className="campaign-table">
             <thead>
