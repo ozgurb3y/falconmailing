@@ -5,6 +5,7 @@ type BatchResult = {
   active: boolean;
   remaining: number;
   progressed: boolean;
+  quotaDeferred?: boolean;
 };
 
 async function deliverCampaignBatch(campaignId: string, token: string) {
@@ -31,7 +32,11 @@ export async function campaignDeliveryWorkflow(
     result = await deliverCampaignBatch(campaignId, token);
 
     if (result.active && result.remaining > 0 && !result.progressed) {
-      await sleep("2m");
+      if (result.quotaDeferred) {
+        await sleep("15m");
+      } else {
+        await sleep("2m");
+      }
     }
   }
 

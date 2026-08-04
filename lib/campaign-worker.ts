@@ -140,6 +140,15 @@ function deliveryErrorMessage(error: unknown) {
     : "Bilinmeyen gönderim hatası";
 }
 
+function deliveryQuotaExceeded(error: unknown) {
+  return (
+    error instanceof Error &&
+    /daily message quota exceeded|maximum sending rate exceeded|throttling failure/i.test(
+      error.message,
+    )
+  );
+}
+
 async function processRecipient(campaign: Campaign, recipient: Recipient) {
   const sql = db();
   const eligible = recipient.contact_id
@@ -168,7 +177,7 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
           updated_at = NOW()
       WHERE id = ${recipient.id} AND status = 'processing'
     `;
-    return;
+    return "processed" as const;
   }
 
   const unsubscribeToken = createToken();
@@ -212,7 +221,19 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
     if (message.sesMessageId) {
       await reconcileSesMessage(message.sesMessageId);
     }
+    return "processed" as const;
   } catch (error) {
+    if (deliveryQuotaExceeded(error)) {
+      await sql`
+        UPDATE campaign_recipients
+        SET status = 'queued', claimed_at = NULL,
+            attempt_count = GREATEST(attempt_count - 1, 0),
+            error_message = ${deliveryErrorMessage(error)},
+            updated_at = NOW()
+        WHERE id = ${recipient.id} AND status = 'processing'
+      `;
+      return "quota_deferred" as const;
+    }
     const retry = transientDeliveryError(error) && recipient.attempt_count < 3;
     await sql`
       UPDATE campaign_recipients
@@ -222,6 +243,7 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
           updated_at = NOW()
       WHERE id = ${recipient.id} AND status = 'processing'
     `;
+    return "processed" as const;
   }
 }
 
@@ -268,9 +290,26 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   const recipients = (claimedRows as Recipient[]).sort(
     (left, right) => left.send_order - right.send_order,
   );
-  for (const recipient of recipients) {
+  let quotaDeferred = false;
+  for (let index = 0; index < recipients.length; index += 1) {
+    const recipient = recipients[index];
     try {
-      await processRecipient(campaign, recipient);
+      const result = await processRecipient(campaign, recipient);
+      if (result === "quota_deferred") {
+        const lastOrder = recipients.at(-1)?.send_order || recipient.send_order;
+        await sql`
+          UPDATE campaign_recipients
+          SET status = 'queued', claimed_at = NULL,
+              attempt_count = GREATEST(attempt_count - 1, 0),
+              updated_at = NOW()
+          WHERE campaign_id = ${campaignId}
+            AND status = 'processing'
+            AND send_order > ${recipient.send_order}
+            AND send_order <= ${lastOrder}
+        `;
+        quotaDeferred = true;
+        break;
+      }
     } catch (error) {
       console.error("Campaign recipient processing failed", {
         campaignId,
@@ -292,7 +331,8 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   return {
     active: counts?.status === "sending",
     remaining: Number(counts?.remaining || 0),
-    progressed: claimedRows.length > 0,
+    progressed: claimedRows.length > 0 && !quotaDeferred,
+    quotaDeferred,
   };
 }
 

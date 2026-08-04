@@ -79,6 +79,17 @@ export async function POST(
       `;
     } else {
       await sql`
+        UPDATE campaign_recipients
+        SET status = 'queued',
+            attempt_count = 0,
+            claimed_at = NULL,
+            error_message = 'SES kotası açıldığında yeniden denenecek.',
+            updated_at = NOW()
+        WHERE campaign_id = ${id}
+          AND status = 'failed'
+          AND error_message ILIKE '%Daily message quota exceeded%'
+      `;
+      await sql`
         UPDATE campaigns
         SET status = 'sending',
             started_at = COALESCE(started_at, NOW()),
