@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { createToken, hashToken } from "@/lib/security";
 import { reconcileSesMessage } from "@/lib/ses-events";
 
-const DEFAULT_BATCH_SIZE = 40;
+const DEFAULT_BATCH_SIZE = 140;
 const DEFAULT_BATCHES_PER_INVOCATION = 3;
 const DEFAULT_SEND_RATE_PER_SECOND = 14;
 
@@ -276,7 +276,7 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   const batchSize = positiveInteger(
     process.env.CAMPAIGN_BATCH_SIZE,
     DEFAULT_BATCH_SIZE,
-    100,
+    280,
   );
   const claimedRows = await sql`
     WITH selected AS (
@@ -305,51 +305,35 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   );
   let quotaDeferred = false;
   let rateDeferred = false;
+  const groupPromises: Array<Promise<readonly string[]>> = [];
   for (let index = 0; index < recipients.length; index += sendRate) {
     const group = recipients.slice(index, index + sendRate);
     const groupStartedAt = Date.now();
-    const results = await Promise.all(
-      group.map(async (recipient) => {
-        try {
-          return await processRecipient(campaign, recipient);
-        } catch (error) {
-          console.error("Campaign recipient processing failed", {
-            campaignId,
-            recipient: recipient.email,
-            message: error instanceof Error ? error.message : "unknown",
-          });
-          const retry = recipient.attempt_count < 3;
-          await sql`
-            UPDATE campaign_recipients
-            SET status = ${retry ? "queued" : "failed"},
-                claimed_at = NULL,
-                error_message = ${deliveryErrorMessage(error)},
-                updated_at = NOW()
-            WHERE id = ${recipient.id} AND status = 'processing'
-          `;
-          return "processed" as const;
-        }
-      }),
+    groupPromises.push(
+      Promise.all(
+        group.map(async (recipient) => {
+          try {
+            return await processRecipient(campaign, recipient);
+          } catch (error) {
+            console.error("Campaign recipient processing failed", {
+              campaignId,
+              recipient: recipient.email,
+              message: error instanceof Error ? error.message : "unknown",
+            });
+            const retry = recipient.attempt_count < 3;
+            await sql`
+              UPDATE campaign_recipients
+              SET status = ${retry ? "queued" : "failed"},
+                  claimed_at = NULL,
+                  error_message = ${deliveryErrorMessage(error)},
+                  updated_at = NOW()
+              WHERE id = ${recipient.id} AND status = 'processing'
+            `;
+            return "processed" as const;
+          }
+        }),
+      ),
     );
-    quotaDeferred = results.includes("quota_deferred");
-    rateDeferred = results.includes("rate_deferred");
-    if (quotaDeferred || rateDeferred) {
-      const groupLastOrder = group.at(-1)?.send_order;
-      const batchLastOrder = recipients.at(-1)?.send_order;
-      if (groupLastOrder && batchLastOrder && groupLastOrder < batchLastOrder) {
-        await sql`
-          UPDATE campaign_recipients
-          SET status = 'queued', claimed_at = NULL,
-              attempt_count = GREATEST(attempt_count - 1, 0),
-              updated_at = NOW()
-          WHERE campaign_id = ${campaignId}
-            AND status = 'processing'
-            AND send_order > ${groupLastOrder}
-            AND send_order <= ${batchLastOrder}
-        `;
-      }
-      break;
-    }
     if (index + sendRate < recipients.length) {
       const remainingWindowMs = 1_000 - (Date.now() - groupStartedAt);
       if (remainingWindowMs > 0) {
@@ -357,6 +341,9 @@ export async function processCampaignBatch(campaignId: string, token: string) {
       }
     }
   }
+  const groupResults = (await Promise.all(groupPromises)).flat();
+  quotaDeferred = groupResults.includes("quota_deferred");
+  rateDeferred = groupResults.includes("rate_deferred");
   const counts = await refreshCampaignCounts(campaignId);
   return {
     active: counts?.status === "sending",
