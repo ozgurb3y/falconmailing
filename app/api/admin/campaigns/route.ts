@@ -16,7 +16,6 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const RECIPIENT_INSERT_CHUNK_SIZE = 5_000;
-const RECIPIENT_INSERT_CONCURRENCY = 4;
 
 const emailAddressSchema = z.string().trim().email().max(254);
 
@@ -97,10 +96,12 @@ const campaignSchema = z
   });
 
 export async function POST(request: Request) {
+  let failureStage = "istek";
   try {
     if (!(await isAdminAuthenticated()) || !isSameOrigin(request)) {
       return NextResponse.json({ message: "Yetkisiz istek." }, { status: 403 });
     }
+    failureStage = "doğrulama";
     const parsed = campaignSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
       );
     }
 
+    failureStage = "veritabanı şeması";
     await ensureDatabaseSchema();
     const sql = db();
     const campaignId = randomUUID();
@@ -143,6 +145,7 @@ export async function POST(request: Request) {
       sendOrder: index + 1,
       isValid: emailAddressSchema.safeParse(recipient.email).success,
     }));
+    failureStage = "kampanya kaydı";
     await sql`
       INSERT INTO campaigns (
         id, name, subject, preview_text, heading, content,
@@ -162,39 +165,36 @@ export async function POST(request: Request) {
     let failedCount = 0;
     try {
       if (value.audienceType === "marketing") {
+        failureStage = "pazarlama alıcıları";
         const inserted = await sql`
-          INSERT INTO campaign_recipients (
-            id, campaign_id, contact_id, internal_recipient_id,
-            email, name, send_order, status, created_at, updated_at
+          WITH inserted AS (
+            INSERT INTO campaign_recipients (
+              id, campaign_id, contact_id, internal_recipient_id,
+              email, name, send_order, status, created_at, updated_at
+            )
+            SELECT
+              gen_random_uuid(), ${campaignId}, id, NULL, email, name,
+              ROW_NUMBER() OVER (ORDER BY lower(email))::int,
+              'queued', NOW(), NOW()
+            FROM marketing_eligible_contacts
+            RETURNING status
           )
-          SELECT
-            gen_random_uuid(), ${campaignId}, id, NULL, email, name,
-            ROW_NUMBER() OVER (ORDER BY lower(email))::int,
-            'queued', NOW(), NOW()
-          FROM marketing_eligible_contacts
-          RETURNING status
+          SELECT COUNT(*)::int AS audience_count FROM inserted
         `;
-        audienceCount = inserted.length;
+        audienceCount = Number(inserted[0]?.audience_count || 0);
       } else {
         for (
-          let groupStart = 0;
-          groupStart < internalRecipients.length;
-          groupStart += RECIPIENT_INSERT_CHUNK_SIZE * RECIPIENT_INSERT_CONCURRENCY
+          let chunkStart = 0;
+          chunkStart < internalRecipients.length;
+          chunkStart += RECIPIENT_INSERT_CHUNK_SIZE
         ) {
-          const chunks = Array.from(
-            { length: RECIPIENT_INSERT_CONCURRENCY },
-            (_, chunkIndex) => {
-              const start =
-                groupStart + chunkIndex * RECIPIENT_INSERT_CHUNK_SIZE;
-              return internalRecipients.slice(
-                start,
-                start + RECIPIENT_INSERT_CHUNK_SIZE,
-              );
-            },
-          ).filter((chunk) => chunk.length > 0);
-
-          const insertedGroups = await Promise.all(
-            chunks.map((chunk) => sql`
+          const chunk = internalRecipients.slice(
+            chunkStart,
+            chunkStart + RECIPIENT_INSERT_CHUNK_SIZE,
+          );
+          failureStage = `alıcı grubu ${Math.floor(chunkStart / RECIPIENT_INSERT_CHUNK_SIZE) + 1}`;
+          const inserted = await sql`
+            WITH inserted AS (
               INSERT INTO campaign_recipients (
                 id, campaign_id, contact_id, internal_recipient_id,
                 email, name, send_order, status, error_message,
@@ -215,18 +215,19 @@ export async function POST(request: Request) {
                   email TEXT, name TEXT, "sendOrder" INTEGER, "isValid" BOOLEAN
                 )
               RETURNING status
-            `),
-          );
+            )
+            SELECT
+              COUNT(*)::int AS audience_count,
+              COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count
+            FROM inserted
+          `;
 
-          for (const inserted of insertedGroups) {
-            audienceCount += inserted.length;
-            failedCount += inserted.filter(
-              (recipient) => recipient.status === "failed",
-            ).length;
-          }
+          audienceCount += Number(inserted[0]?.audience_count || 0);
+          failedCount += Number(inserted[0]?.failed_count || 0);
         }
       }
 
+      failureStage = "kampanya sayaçları";
       await sql`
         UPDATE campaigns
         SET audience_count = ${audienceCount},
@@ -252,11 +253,19 @@ export async function POST(request: Request) {
       audienceCount,
     });
   } catch (error) {
+    const databaseCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : null;
     console.error("Campaign creation failed", {
+      stage: failureStage,
+      code: databaseCode,
       message: error instanceof Error ? error.message : "unknown",
     });
     return NextResponse.json(
-      { message: "Kampanya oluşturulamadı." },
+      {
+        message: `Kampanya oluşturulamadı (${failureStage}${databaseCode ? `, hata ${databaseCode}` : ""}).`,
+      },
       { status: 503 },
     );
   }
