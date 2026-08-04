@@ -82,8 +82,8 @@ export async function POST(
         UPDATE campaigns
         SET status = 'sending',
             started_at = COALESCE(started_at, NOW()),
-            worker_token = CASE WHEN status = 'paused' THEN NULL ELSE worker_token END,
-            worker_lease_until = CASE WHEN status = 'paused' THEN NULL ELSE worker_lease_until END,
+            worker_token = NULL,
+            worker_lease_until = NULL,
             updated_at = NOW()
         WHERE id = ${id} AND status IN ('draft', 'sending', 'paused')
       `;
