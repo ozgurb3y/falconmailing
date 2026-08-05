@@ -5,7 +5,7 @@ import { unsubscribeByToken } from "@/lib/unsubscribe";
 export const runtime = "nodejs";
 
 const schema = z.object({
-  token: z.string().min(32).max(256),
+  token: z.string().min(32).max(1024),
 });
 
 export async function POST(request: Request) {
@@ -29,4 +29,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

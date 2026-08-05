@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { sendCampaignEmail } from "@/lib/campaign-mail";
 import { db } from "@/lib/db";
-import { createToken, hashToken } from "@/lib/security";
+import { createUnsubscribeToken } from "@/lib/security";
 import { reconcileSesMessage } from "@/lib/ses-events";
 import { cleanupCompletedCampaignData } from "@/lib/storage-maintenance";
 
@@ -196,20 +196,12 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
     return "processed" as const;
   }
 
-  const unsubscribeToken = createToken();
+  const unsubscribeToken = createUnsubscribeToken({
+    contactId: recipient.contact_id,
+    internalRecipientId: recipient.internal_recipient_id,
+    recipientEmail: recipient.email,
+  });
   try {
-    await sql`
-      INSERT INTO unsubscribe_tokens (
-        token_hash, contact_id, internal_recipient_id,
-        recipient_email, campaign_id, created_at
-      ) VALUES (
-        ${hashToken(unsubscribeToken)},
-        ${recipient.contact_id || null},
-        ${recipient.internal_recipient_id || null},
-        ${recipient.contact_id || recipient.internal_recipient_id ? null : recipient.email},
-        ${campaign.id}, NOW()
-      )
-    `;
     const message = await sendCampaignEmail({
       to: recipient.email,
       recipientName: recipient.name,

@@ -1,22 +1,23 @@
 import { db } from "./db";
-import { hashToken } from "./security";
+import { readUnsubscribeToken } from "./security";
 import { ensureDatabaseSchema } from "./schema";
 
 export async function unsubscribeByToken(rawToken: string) {
-  if (!rawToken || rawToken.length < 32 || rawToken.length > 256) {
+  if (!rawToken || rawToken.length < 32 || rawToken.length > 1024) {
     return false;
   }
 
+  const target = readUnsubscribeToken(rawToken);
+  if (!target) return false;
+
   await ensureDatabaseSchema();
   const sql = db();
-  const tokenHash = hashToken(rawToken);
   const rows = await sql`
     WITH target AS (
-      SELECT contact_id, internal_recipient_id, recipient_email
-      FROM unsubscribe_tokens
-      WHERE token_hash = ${tokenHash}
-        AND (expires_at IS NULL OR expires_at > NOW())
-      LIMIT 1
+      SELECT
+        ${target.contactId}::uuid AS contact_id,
+        ${target.internalRecipientId}::uuid AS internal_recipient_id,
+        ${target.recipientEmail}::text AS recipient_email
     ),
     updated_contact AS (
       UPDATE contacts
@@ -92,10 +93,7 @@ export async function unsubscribeByToken(rawToken: string) {
       ON CONFLICT ((lower(email))) DO NOTHING
       RETURNING id
     )
-    UPDATE unsubscribe_tokens
-    SET used_at = COALESCE(used_at, NOW())
-    WHERE token_hash = ${tokenHash}
-    RETURNING contact_id, internal_recipient_id, recipient_email
+    SELECT contact_id, internal_recipient_id, recipient_email FROM target
   `;
 
   return rows.length > 0;

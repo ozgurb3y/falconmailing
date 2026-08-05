@@ -109,6 +109,7 @@ export async function cleanupCompletedCampaignData(): Promise<StorageCleanupResu
         AS login_attempts_deleted
   `;
   const housekeeping = housekeepingRows[0] as CountRow | undefined;
+  await sql`DROP TABLE IF EXISTS unsubscribe_tokens`;
 
   return {
     mode,

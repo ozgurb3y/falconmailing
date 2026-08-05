@@ -47,16 +47,6 @@ const statements = [
   )`,
   `CREATE INDEX IF NOT EXISTS verification_tokens_contact_idx
     ON verification_tokens (contact_id)`,
-  `CREATE TABLE IF NOT EXISTS unsubscribe_tokens (
-    token_hash CHAR(64) PRIMARY KEY,
-    contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    campaign_id UUID,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
-    used_at TIMESTAMPTZ
-  )`,
-  `CREATE INDEX IF NOT EXISTS unsubscribe_tokens_contact_idx
-    ON unsubscribe_tokens (contact_id)`,
   `CREATE TABLE IF NOT EXISTS suppressions (
     id UUID PRIMARY KEY,
     contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
@@ -247,15 +237,6 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS campaigns_stalled_worker_idx
     ON campaigns (worker_lease_until)
     WHERE status = 'sending'`,
-  `ALTER TABLE unsubscribe_tokens
-    ALTER COLUMN contact_id DROP NOT NULL`,
-  `ALTER TABLE unsubscribe_tokens
-    ADD COLUMN IF NOT EXISTS internal_recipient_id UUID
-      REFERENCES internal_recipients(id) ON DELETE CASCADE`,
-  `ALTER TABLE unsubscribe_tokens
-    ADD COLUMN IF NOT EXISTS recipient_email TEXT`,
-  `CREATE INDEX IF NOT EXISTS unsubscribe_tokens_internal_idx
-    ON unsubscribe_tokens (internal_recipient_id)`,
 ] as const;
 
 let schemaPromise: Promise<void> | undefined;

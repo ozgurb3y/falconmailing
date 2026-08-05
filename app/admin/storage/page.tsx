@@ -14,7 +14,6 @@ type StorageRow = {
 const tableLabels: Record<string, string> = {
   campaign_recipients: "Kampanya alıcı ve gönderim kayıtları",
   ses_delivery_events: "Amazon SES teslimat olayları",
-  unsubscribe_tokens: "Abonelikten çıkma bağlantıları",
   audit_logs: "Yönetim işlem kayıtları",
   campaigns: "Kampanyalar",
   contacts: "İzinli aboneler",
@@ -110,8 +109,8 @@ export default async function StorageDiagnosticsPage() {
         </div>
         <p className="send-hint">
           Tamamlanan veya iptal edilen kampanyaların alıcı ve teslimat ayrıntıları
-          silinir. Kampanya toplamları, izinler, engellemeler ve abonelikten çıkma
-          bağlantıları korunur.
+          silinir. Kampanya toplamları, izinler ve engellemeler korunur;
+          abonelikten çıkma bağlantıları için ayrı kayıt tutulmaz.
         </p>
       </section>
     </main>
