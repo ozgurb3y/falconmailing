@@ -3,6 +3,7 @@ import { sendCampaignEmail } from "@/lib/campaign-mail";
 import { db } from "@/lib/db";
 import { createToken, hashToken } from "@/lib/security";
 import { reconcileSesMessage } from "@/lib/ses-events";
+import { cleanupCompletedCampaignData } from "@/lib/storage-maintenance";
 
 const DEFAULT_BATCH_SIZE = 560;
 const DEFAULT_BATCHES_PER_INVOCATION = 3;
@@ -77,9 +78,18 @@ export async function refreshCampaignCounts(campaignId: string) {
     )
     UPDATE campaigns
     SET
-      sent_count = counts.sent,
-      failed_count = counts.failed,
-      skipped_count = counts.skipped,
+      sent_count = CASE
+        WHEN campaigns.status IN ('completed', 'cancelled') THEN campaigns.sent_count
+        ELSE counts.sent
+      END,
+      failed_count = CASE
+        WHEN campaigns.status IN ('completed', 'cancelled') THEN campaigns.failed_count
+        ELSE counts.failed
+      END,
+      skipped_count = CASE
+        WHEN campaigns.status IN ('completed', 'cancelled') THEN campaigns.skipped_count
+        ELSE counts.skipped
+      END,
       status = CASE
         WHEN campaigns.status = 'sending' AND counts.remaining = 0 THEN 'completed'
         ELSE campaigns.status
@@ -345,6 +355,13 @@ export async function processCampaignBatch(campaignId: string, token: string) {
   quotaDeferred = groupResults.includes("quota_deferred");
   rateDeferred = groupResults.includes("rate_deferred");
   const counts = await refreshCampaignCounts(campaignId);
+  if (counts?.status === "completed") {
+    try {
+      await cleanupCompletedCampaignData();
+    } catch (error) {
+      console.error("Completed campaign cleanup failed", { campaignId, error });
+    }
+  }
   return {
     active: counts?.status === "sending",
     remaining: Number(counts?.remaining || 0),

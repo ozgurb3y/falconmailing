@@ -19,7 +19,6 @@ export type SnsEnvelope = {
 };
 
 const certCache = new Map<string, { certificate: string; expiresAt: number }>();
-let lastEventCleanupAt = 0;
 
 function allowedTopicArn() {
   return process.env.SES_SNS_TOPIC_ARN || DEFAULT_TOPIC_ARN;
@@ -188,20 +187,6 @@ export async function recordSesNotification(
     eventAt,
   };
   const sql = db();
-  const cleanupSample = Number.parseInt(
-    snsMessageId.replaceAll("-", "").slice(-3),
-    16,
-  );
-  if (
-    cleanupSample % 1024 === 0 &&
-    Date.now() - lastEventCleanupAt >= 60 * 60 * 1000
-  ) {
-    await sql`
-      DELETE FROM ses_delivery_events
-      WHERE created_at < NOW() - INTERVAL '30 days'
-    `;
-    lastEventCleanupAt = Date.now();
-  }
   await sql`
     INSERT INTO ses_delivery_events (
       sns_message_id, ses_message_id, event_type, event_at,

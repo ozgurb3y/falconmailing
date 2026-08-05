@@ -11,6 +11,21 @@ type StorageRow = {
   estimated_rows: number;
 };
 
+const tableLabels: Record<string, string> = {
+  campaign_recipients: "Kampanya alıcı ve gönderim kayıtları",
+  ses_delivery_events: "Amazon SES teslimat olayları",
+  unsubscribe_tokens: "Abonelikten çıkma bağlantıları",
+  audit_logs: "Yönetim işlem kayıtları",
+  campaigns: "Kampanyalar",
+  contacts: "İzinli aboneler",
+  consents: "E-posta izin ve onay kayıtları",
+  internal_recipients: "İçe aktarılan alıcılar",
+  email_suppressions: "Gönderimi engellenen e-posta adresleri",
+  verification_tokens: "E-posta doğrulama bağlantıları",
+  admin_login_attempts: "Yönetici giriş denemeleri",
+  suppressions: "Abone engelleme kayıtları",
+};
+
 function formatBytes(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -60,17 +75,15 @@ export default async function StorageDiagnosticsPage() {
             <strong>{formatBytes(databaseBytes)}</strong>
           </div>
           <div>
-            <span>Depolama durumu</span>
-            <strong>
-              {databaseBytes < 450 * 1024 ** 2 ? "Normal" : "Kritik"}
-            </strong>
+            <span>Otomatik temizlik</span>
+            <strong>Her gün 05.00 civarı</strong>
           </div>
         </div>
         <div className="campaign-table-wrap">
           <table className="campaign-table">
             <thead>
               <tr>
-                <th>Tablo</th>
+                <th>Kayıt türü</th>
                 <th>Tahmini kayıt</th>
                 <th>Toplam</th>
                 <th>Veri</th>
@@ -80,7 +93,12 @@ export default async function StorageDiagnosticsPage() {
             <tbody>
               {tables.map((table) => (
                 <tr key={table.table_name}>
-                  <td>{table.table_name}</td>
+                  <td>
+                    <strong>{tableLabels[table.table_name] || table.table_name}</strong>
+                    {tableLabels[table.table_name] ? (
+                      <small className="table-technical-name">{table.table_name}</small>
+                    ) : null}
+                  </td>
                   <td>{Number(table.estimated_rows).toLocaleString("tr-TR")}</td>
                   <td>{formatBytes(Number(table.total_bytes))}</td>
                   <td>{formatBytes(Number(table.table_bytes))}</td>
@@ -90,6 +108,11 @@ export default async function StorageDiagnosticsPage() {
             </tbody>
           </table>
         </div>
+        <p className="send-hint">
+          Tamamlanan veya iptal edilen kampanyaların alıcı ve teslimat ayrıntıları
+          silinir. Kampanya toplamları, izinler, engellemeler ve abonelikten çıkma
+          bağlantıları korunur.
+        </p>
       </section>
     </main>
   );
