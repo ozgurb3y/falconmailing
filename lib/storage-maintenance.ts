@@ -23,17 +23,20 @@ export async function cleanupCompletedCampaignData(): Promise<StorageCleanupResu
   const sql = db();
   const activeRows = await sql`
     SELECT EXISTS (
-      SELECT 1 FROM campaigns
-      WHERE status IN ('draft', 'sending', 'paused')
-    ) AS has_active_campaign
+      SELECT 1
+      FROM campaign_recipients recipients
+      JOIN campaigns ON campaigns.id = recipients.campaign_id
+      WHERE campaigns.status IN ('sending', 'paused')
+        AND recipients.status IN ('queued', 'processing')
+    ) AS has_active_recipients
   `;
-  const hasActiveCampaign = Boolean(activeRows[0]?.has_active_campaign);
+  const hasActiveRecipients = Boolean(activeRows[0]?.has_active_recipients);
 
   let mode: StorageCleanupResult["mode"] = "targeted";
   let recipientsDeleted = 0;
   let eventsDeleted = 0;
 
-  if (!hasActiveCampaign) {
+  if (!hasActiveRecipients) {
     const rows = await sql`
       SELECT
         (SELECT COUNT(*)::int FROM campaign_recipients) AS recipients_deleted,
