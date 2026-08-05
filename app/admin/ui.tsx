@@ -163,6 +163,10 @@ function deliveryStatusLabel(status: string) {
 export function DeliveryMonitor() {
   const [stats, setStats] = useState<DeliveryStats>(emptyDeliveryStats);
   const [error, setError] = useState("");
+  const [controlBusy, setControlBusy] = useState<"pause" | "resume" | null>(
+    null,
+  );
+  const [controlMessage, setControlMessage] = useState("");
   const [workflowHealth, setWorkflowHealth] = useState<
     "checking" | "healthy" | "unhealthy"
   >("checking");
@@ -248,6 +252,55 @@ export function DeliveryMonitor() {
       ? Math.min(100, Math.round((stats.quotaSent / stats.quotaMax) * 100))
       : 0;
 
+  async function controlCampaign(action: "pause" | "resume") {
+    if (!stats.campaignId || controlBusy) return;
+
+    setControlBusy(action);
+    setControlMessage("");
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/admin/campaigns/${stats.campaignId}/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      const result = (await response.json()) as {
+        status?: string;
+        sent_count?: number;
+        failed_count?: number;
+        skipped_count?: number;
+        message?: string;
+      };
+      if (!response.ok) {
+        throw new Error(result.message || "Gönderim durumu değiştirilemedi.");
+      }
+
+      setStats((current) => ({
+        ...current,
+        status: result.status || current.status,
+        sent: Number(result.sent_count ?? current.sent),
+        failed: Number(result.failed_count ?? current.failed),
+        skipped: Number(result.skipped_count ?? current.skipped),
+      }));
+      setControlMessage(
+        action === "pause"
+          ? "Gönderim duraklatıldı. İşlemdeki küçük grup tamamlanabilir."
+          : "Gönderim kaldığı yerden devam ediyor.",
+      );
+    } catch (controlError) {
+      setError(
+        controlError instanceof Error
+          ? controlError.message
+          : "Gönderim durumu değiştirilemedi.",
+      );
+    } finally {
+      setControlBusy(null);
+    }
+  }
+
   return (
     <section className="delivery-monitor" aria-live="polite">
       <div className="delivery-monitor-heading">
@@ -267,6 +320,31 @@ export function DeliveryMonitor() {
             ? "Arka plan gönderimi hazır · Sayfa kapansa da devam eder."
             : "Arka plan gönderim altyapısı şu anda doğrulanamadı."}
       </p>
+      {stats.campaignId && stats.status === "sending" ? (
+        <div className="send-actions">
+          <button
+            className="admin-ghost"
+            disabled={controlBusy !== null}
+            onClick={() => void controlCampaign("pause")}
+            type="button"
+          >
+            {controlBusy === "pause" ? "Duraklatılıyor…" : "Gönderimi duraklat"}
+          </button>
+        </div>
+      ) : null}
+      {stats.campaignId && stats.status === "paused" ? (
+        <div className="send-actions">
+          <button
+            className="admin-primary"
+            disabled={controlBusy !== null}
+            onClick={() => void controlCampaign("resume")}
+            type="button"
+          >
+            {controlBusy === "resume" ? "Başlatılıyor…" : "Gönderime devam et"}
+          </button>
+        </div>
+      ) : null}
+      {controlMessage ? <p className="admin-success">{controlMessage}</p> : null}
       <div
         className="progress-track"
         role="progressbar"
