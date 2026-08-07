@@ -18,7 +18,7 @@ const uploadSchema = z.object({
       }),
     )
     .min(1)
-    .max(10_000),
+    .max(5_000),
 });
 
 export async function POST(

@@ -65,6 +65,7 @@ export function AdminLogoutButton() {
 type InternalRecipient = { email: string; name: string | null };
 
 const RECIPIENT_UPLOAD_MAX_BYTES = 500_000;
+const RECIPIENT_UPLOAD_MAX_COUNT = 5_000;
 
 function chunkInternalRecipients(recipients: InternalRecipient[]) {
   const encoder = new TextEncoder();
@@ -74,7 +75,11 @@ function chunkInternalRecipients(recipients: InternalRecipient[]) {
 
   recipients.forEach((recipient) => {
     const recipientBytes = encoder.encode(JSON.stringify(recipient)).length + 1;
-    if (chunk.length > 0 && chunkBytes + recipientBytes > RECIPIENT_UPLOAD_MAX_BYTES) {
+    if (
+      chunk.length > 0 &&
+      (chunk.length >= RECIPIENT_UPLOAD_MAX_COUNT ||
+        chunkBytes + recipientBytes > RECIPIENT_UPLOAD_MAX_BYTES)
+    ) {
       chunks.push(chunk);
       chunk = [];
       chunkBytes = 2;
