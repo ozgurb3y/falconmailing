@@ -64,6 +64,28 @@ export function AdminLogoutButton() {
 
 type InternalRecipient = { email: string; name: string | null };
 
+const RECIPIENT_UPLOAD_MAX_BYTES = 500_000;
+
+function chunkInternalRecipients(recipients: InternalRecipient[]) {
+  const encoder = new TextEncoder();
+  const chunks: InternalRecipient[][] = [];
+  let chunk: InternalRecipient[] = [];
+  let chunkBytes = 2;
+
+  recipients.forEach((recipient) => {
+    const recipientBytes = encoder.encode(JSON.stringify(recipient)).length + 1;
+    if (chunk.length > 0 && chunkBytes + recipientBytes > RECIPIENT_UPLOAD_MAX_BYTES) {
+      chunks.push(chunk);
+      chunk = [];
+      chunkBytes = 2;
+    }
+    chunk.push(recipient);
+    chunkBytes += recipientBytes;
+  });
+  if (chunk.length > 0) chunks.push(chunk);
+  return chunks;
+}
+
 function parseRecipientToken(token: string): InternalRecipient {
   const angled = token.match(/^(.+?)\s*<([^>]+)>$/);
   if (angled) {
@@ -435,7 +457,8 @@ export function CampaignCreateForm() {
       return;
     }
     const subject = String(data.get("subject") || "");
-    let result: { id?: string; message?: string };
+    const recipientChunks = chunkInternalRecipients(internalRecipients);
+    let result: { id?: string; message?: string } = {};
     try {
       const response = await fetch("/api/admin/campaigns", {
         method: "POST",
@@ -449,7 +472,7 @@ export function CampaignCreateForm() {
           contentMode: "html",
           htmlContent,
           audienceType: "internal",
-          internalRecipients,
+          internalRecipients: recipientChunks[0],
           internalAuthorized: true,
           ctaLabel: null,
           ctaUrl: null,
@@ -467,9 +490,41 @@ export function CampaignCreateForm() {
         setLoading(false);
         return;
       }
-    } catch {
+      let uploadedCount = recipientChunks[0].length;
+      for (let index = 1; index < recipientChunks.length; index += 1) {
+        setMessage(
+          `Alıcılar yükleniyor: ${uploadedCount.toLocaleString("tr-TR")} / ${internalRecipients.length.toLocaleString("tr-TR")}`,
+        );
+        const uploadResponse = await fetch(
+          `/api/admin/campaigns/${result.id}/recipients`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              startIndex: uploadedCount,
+              recipients: recipientChunks[index],
+            }),
+          },
+        );
+        const uploadResult = (await uploadResponse.json().catch(() => ({}))) as {
+          message?: string;
+        };
+        if (!uploadResponse.ok) {
+          throw new Error(uploadResult.message || "Alıcı listesi yüklenemedi.");
+        }
+        uploadedCount += recipientChunks[index].length;
+      }
+      setMessage("Alıcı listesi yüklendi. Gönderim başlatılıyor…");
+    } catch (creationError) {
+      if (result?.id) {
+        await fetch(`/api/admin/campaigns/${result.id}`, { method: "DELETE" }).catch(
+          () => undefined,
+        );
+      }
       setMessage(
-        "Kampanya oluşturma bağlantısı kesildi. Liste korunuyor; tekrar deneyin.",
+        creationError instanceof Error
+          ? creationError.message
+          : "Kampanya oluşturma bağlantısı kesildi. Liste korunuyor; tekrar deneyin.",
       );
       setLoading(false);
       return;

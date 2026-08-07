@@ -204,6 +204,8 @@ const statements = [
     ON campaign_recipients (campaign_id, status)`,
   `CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_order_idx
     ON campaign_recipients (campaign_id, send_order)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS campaign_recipients_campaign_order_unique
+    ON campaign_recipients (campaign_id, send_order)`,
   `ALTER TABLE campaign_recipients
     ADD COLUMN IF NOT EXISTS rfc_message_id TEXT`,
   `ALTER TABLE campaign_recipients

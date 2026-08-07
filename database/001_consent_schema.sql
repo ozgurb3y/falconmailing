@@ -229,6 +229,9 @@ ALTER TABLE campaign_recipients
 CREATE INDEX IF NOT EXISTS campaign_recipients_campaign_order_idx
   ON campaign_recipients (campaign_id, send_order);
 
+CREATE UNIQUE INDEX IF NOT EXISTS campaign_recipients_campaign_order_unique
+  ON campaign_recipients (campaign_id, send_order);
+
 ALTER TABLE campaign_recipients
   ALTER COLUMN contact_id DROP NOT NULL;
 

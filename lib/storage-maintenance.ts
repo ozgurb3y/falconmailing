@@ -26,8 +26,14 @@ export async function cleanupCompletedCampaignData(): Promise<StorageCleanupResu
       SELECT 1
       FROM campaign_recipients recipients
       JOIN campaigns ON campaigns.id = recipients.campaign_id
-      WHERE campaigns.status IN ('sending', 'paused')
-        AND recipients.status IN ('queued', 'processing')
+      WHERE recipients.status IN ('queued', 'processing')
+        AND (
+          campaigns.status IN ('sending', 'paused')
+          OR (
+            campaigns.status = 'draft'
+            AND campaigns.updated_at > NOW() - INTERVAL '1 hour'
+          )
+        )
     ) AS has_active_recipients
   `;
   const hasActiveRecipients = Boolean(activeRows[0]?.has_active_recipients);
