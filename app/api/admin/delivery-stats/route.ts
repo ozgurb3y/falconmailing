@@ -49,7 +49,7 @@ export async function GET() {
               AND error_message ILIKE '%Daily message quota exceeded%'
           ) AS quota_exhausted
         FROM campaign_recipients
-      ),
+      )
       SELECT
         latest_campaign.id,
         latest_campaign.subject,
