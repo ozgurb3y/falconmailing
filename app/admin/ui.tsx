@@ -134,15 +134,9 @@ type DeliveryStats = {
   status: string;
   requested: number;
   sent: number;
-  delivered: number;
-  bounced: number;
-  complained: number;
-  delayed: number;
-  rejected: number;
   failed: number;
   skipped: number;
   monthlySent: number;
-  monthlyDelivered: number;
   quotaMax: number;
   quotaSent: number;
   quotaRemaining: number;
@@ -157,15 +151,9 @@ const emptyDeliveryStats: DeliveryStats = {
   status: "idle",
   requested: 0,
   sent: 0,
-  delivered: 0,
-  bounced: 0,
-  complained: 0,
-  delayed: 0,
-  rejected: 0,
   failed: 0,
   skipped: 0,
   monthlySent: 0,
-  monthlyDelivered: 0,
   quotaMax: 10_000,
   quotaSent: 0,
   quotaRemaining: 10_000,

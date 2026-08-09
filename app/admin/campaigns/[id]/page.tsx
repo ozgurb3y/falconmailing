@@ -62,7 +62,11 @@ export default async function CampaignDetailPage({
         <p className="admin-kicker">
           {campaign.content_mode === "html" ? "HTML e-posta ön izlemesi" : "İçerik özeti"}
         </p>
-        {campaign.content_mode === "html" && campaign.html_content ? (
+        {(["completed", "cancelled"] as const).includes(campaign.status) &&
+        !campaign.html_content &&
+        !campaign.content ? (
+          <p>Gönderim tamamlandıktan sonra e-posta içeriği otomatik olarak silindi.</p>
+        ) : campaign.content_mode === "html" && campaign.html_content ? (
           <iframe
             className="html-preview-frame html-preview-detail"
             sandbox=""

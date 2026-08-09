@@ -115,6 +115,33 @@ export async function cleanupCompletedCampaignData(): Promise<StorageCleanupResu
         AS login_attempts_deleted
   `;
   const housekeeping = housekeepingRows[0] as CountRow | undefined;
+  await sql`
+    UPDATE campaigns
+    SET name = 'Tamamlanan kampanya',
+        subject = 'Tamamlanan kampanya',
+        preview_text = NULL,
+        heading = '',
+        content = '',
+        cta_label = NULL,
+        cta_url = NULL,
+        html_content = NULL,
+        worker_token = NULL,
+        worker_lease_until = NULL,
+        updated_at = NOW()
+    WHERE status IN ('completed', 'cancelled')
+      AND (
+        name <> 'Tamamlanan kampanya'
+        OR subject <> 'Tamamlanan kampanya'
+        OR preview_text IS NOT NULL
+        OR heading <> ''
+        OR content <> ''
+        OR cta_label IS NOT NULL
+        OR cta_url IS NOT NULL
+        OR html_content IS NOT NULL
+        OR worker_token IS NOT NULL
+        OR worker_lease_until IS NOT NULL
+      )
+  `;
   await sql`DROP TABLE IF EXISTS unsubscribe_tokens`;
 
   return {

@@ -2,7 +2,6 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { sendCampaignEmail } from "@/lib/campaign-mail";
 import { db } from "@/lib/db";
 import { createUnsubscribeToken } from "@/lib/security";
-import { reconcileSesMessage } from "@/lib/ses-events";
 import { cleanupCompletedCampaignData } from "@/lib/storage-maintenance";
 
 const DEFAULT_BATCH_SIZE = 560;
@@ -226,9 +225,6 @@ async function processRecipient(campaign: Campaign, recipient: Recipient) {
           error_message = NULL, updated_at = NOW()
       WHERE id = ${recipient.id} AND status = 'processing'
     `;
-    if (message.sesMessageId) {
-      await reconcileSesMessage(message.sesMessageId);
-    }
     return "processed" as const;
   } catch (error) {
     if (dailyDeliveryQuotaExceeded(error) || deliveryRateExceeded(error)) {

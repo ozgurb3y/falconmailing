@@ -53,6 +53,12 @@ kullanır ve sunucu çalışması kesilirse kaldığı kuyruğu yeniden sahiplen
 `CAMPAIGN_BATCHES_PER_INVOCATION` değerleri SES gönderim kotasına göre
 ayarlanabilir.
 
+SMTP tarafından kabul edilen her e-posta kampanyanın `sent_count` toplamına
+eklenir. SES olay yayını kullanılmaz; gönderim tamamlandığında geçici alıcı
+ve teslimat kayıtlarıyla e-posta içeriği silinir; yalnızca kampanya toplamları
+ve tarihleri saklanır. Bounce ve complaint koruması Amazon SES account-level
+suppression list ile sağlanmalıdır.
+
 ## Vercel
 
 Vercel proje ayarlarında:

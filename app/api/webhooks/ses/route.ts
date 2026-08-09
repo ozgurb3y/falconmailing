@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { ensureDatabaseSchema } from "@/lib/schema";
 import {
   confirmSnsSubscription,
-  recordSesNotification,
   type SnsEnvelope,
   verifySnsEnvelope,
 } from "@/lib/ses-events";
@@ -16,11 +14,8 @@ export async function POST(request: Request) {
     if (!(await verifySnsEnvelope(envelope))) {
       return NextResponse.json({ message: "Invalid SNS signature." }, { status: 403 });
     }
-    await ensureDatabaseSchema();
     if (envelope.Type === "SubscriptionConfirmation") {
       await confirmSnsSubscription(envelope);
-    } else if (envelope.Type === "Notification") {
-      await recordSesNotification(envelope.MessageId, envelope.Message);
     }
     return NextResponse.json({ received: true });
   } catch (error) {

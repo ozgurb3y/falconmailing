@@ -33,12 +33,10 @@ export async function GET() {
         LIMIT 1
       ),
       monthly_delivery AS (
-        SELECT
-          COUNT(*) FILTER (WHERE status = 'sent')::int AS accepted,
-          COUNT(*) FILTER (WHERE delivery_status = 'delivered')::int AS delivered
-        FROM campaign_recipients
-        WHERE sent_at >= date_trunc('month', NOW())
-          AND sent_at < date_trunc('month', NOW()) + INTERVAL '1 month'
+        SELECT COALESCE(SUM(sent_count), 0)::int AS accepted
+        FROM campaigns
+        WHERE created_at >= date_trunc('month', NOW())
+          AND created_at < date_trunc('month', NOW()) + INTERVAL '1 month'
       ),
       rolling_quota AS (
         SELECT
@@ -52,18 +50,6 @@ export async function GET() {
           ) AS quota_exhausted
         FROM campaign_recipients
       ),
-      latest_delivery AS (
-        SELECT
-          COUNT(*) FILTER (WHERE delivery_status = 'delivered')::int AS delivered,
-          COUNT(*) FILTER (WHERE delivery_status = 'bounced')::int AS bounced,
-          COUNT(*) FILTER (WHERE delivery_status = 'complained')::int AS complained,
-          COUNT(*) FILTER (WHERE delivery_status = 'delayed')::int AS delayed,
-          COUNT(*) FILTER (
-            WHERE delivery_status IN ('rejected', 'rendering_failed')
-          )::int AS rejected
-        FROM campaign_recipients
-        WHERE campaign_id = (SELECT id FROM latest_campaign)
-      )
       SELECT
         latest_campaign.id,
         latest_campaign.subject,
@@ -72,17 +58,11 @@ export async function GET() {
         COALESCE(latest_campaign.sent_count, 0)::int AS sent,
         COALESCE(latest_campaign.failed_count, 0)::int AS failed,
         COALESCE(latest_campaign.skipped_count, 0)::int AS skipped,
-        latest_delivery.delivered::int AS delivered,
-        latest_delivery.bounced::int AS bounced,
-        latest_delivery.complained::int AS complained,
-        latest_delivery.delayed::int AS delayed,
-        latest_delivery.rejected::int AS rejected,
         latest_campaign.updated_at,
         monthly_delivery.accepted::int AS monthly_sent,
-        monthly_delivery.delivered::int AS monthly_delivered,
         rolling_quota.sent_last_24_hours::int,
         rolling_quota.quota_exhausted
-      FROM monthly_delivery, latest_delivery, rolling_quota
+      FROM monthly_delivery, rolling_quota
       LEFT JOIN latest_campaign ON TRUE
     `, getLiveSesQuota()]);
     const row = rows[0];
@@ -111,15 +91,9 @@ export async function GET() {
         status: row?.status || "idle",
         requested,
         sent,
-        delivered: Number(row?.delivered || 0),
-        bounced: Number(row?.bounced || 0),
-        complained: Number(row?.complained || 0),
-        delayed: Number(row?.delayed || 0),
-        rejected: Number(row?.rejected || 0),
         failed: Number(row?.failed || 0),
         skipped: Number(row?.skipped || 0),
         monthlySent: Number(row?.monthly_sent || 0),
-        monthlyDelivered: Number(row?.monthly_delivered || 0),
         quotaMax,
         quotaSent,
         quotaRemaining,
